@@ -1,22 +1,29 @@
 //DON'T MESS WITH THIS IT'S MAGIC
-package org.firstinspires.ftc.teamcode22482;
+package org.firstinspires.ftc.teamcode;
 
 // We need to import external code (code someone else wrote) to make the robot run
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
-import com.qualcomm.robotcore.hardware.VoltageSensor;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import java.lang.Math;
+
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import com.qualcomm.hardware.limelightvision.Limelight3A;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+
+import java.util.List;
 
 
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -28,7 +35,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 @TeleOp
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode2026_rpg extends LinearOpMode {
+public class HippoDecode2026_rpgSpare extends LinearOpMode {
 
     public void stopDrive() {
         frontLeft.setPower(0);
@@ -77,12 +84,63 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
         stopDrive();
     }
+    //with camera inputs. at some pt. maybe
+    void LLRotateDegrees() {
+
+        while (opModeIsActive()) {
+            LLResult result = limelight.getLatestResult();
+
+            if (result.isValid()) {
+                // Access general information
+                Pose3D botpose = result.getBotpose();
+                double power;
+                double captureLatency = result.getCaptureLatency();
+                double targetingLatency = result.getTargetingLatency();
+                double parseLatency = result.getParseLatency();
+                double tx = result.getTx();
+                double ty = result.getTy();
+                double ta = result.getTa();
+
+                //just tells you what tag we're looking at
+                List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();
+                for (LLResultTypes.FiducialResult fr : fiducialResults) {
+                    telemetry.addData("Fiducial", "ID: %d, Family: %s, X: %.2f, Y: %.2f", fr.getFiducialId(), fr.getFamily(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
+                }
+
+                if (Math.abs(tx) < 0.5) {
+                    power = 0;
+                }
+
+                double kP = 0.04; //power constant
+                power = kP * tx;
+
+                frontLeft.setPower(-power);
+                frontRight.setPower(power);
+                backLeft.setPower(-power);
+                backRight.setPower(power);
+
+                telemetry.addData("tx", tx);
+                telemetry.addData("turn power", power);
+                telemetry.update();
+
+            }
+        }
+
+        while (opModeIsActive() && frontLeft.isBusy() && frontRight.isBusy()
+                && backLeft.isBusy() && backRight.isBusy()) {
+            idle();
+        }
+
+        stopDrive();
+    }
 
     // Declarations for the objects that represent the motors/servos:
     private DcMotor frontLeft;
     private DcMotor frontRight;
     private DcMotor backLeft;
     private DcMotor backRight;
+
+    private Limelight3A limelight;
 
     private DcMotorEx flywheel1;
 
@@ -96,7 +154,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     private ElapsedTime timer = new ElapsedTime();
     private VoltageSensor voltageSensor;
     private AprilTagAim autoAim;
-    private Limelight3A limelight;
+
+
 
     // This is an @Override annotation.
     // Since Hippo is a subclass of LinearOpMode, it 'inherits' the public functions
@@ -109,6 +168,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     // Here is the most important function of the program, runOpMode. The code in here
     // begins executing as soon as you hit the INIT button 
     public void runOpMode() {
+
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+        telemetry.setMsTransmissionInterval(11);
+
+        limelight.pipelineSwitch(0);
+
+        limelight.start();
 
         // The following lines of code link the objects we declared above to the
         //   entries in the config file on the robot. The config file links those entries
@@ -143,12 +210,6 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
         blocker =  hardwareMap.get(Servo.class, "blocker");
-
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start(); // This tells Limelight to start looking!
-
 
         // These lines create 2 instances of the PID controller class.
         // A PID controller has three parts: a P term, an I term, and a D term(surprisingly enough).
@@ -226,12 +287,51 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //   the loop will terminate.
         while (opModeIsActive()) {
 
+                LLResult result = limelight.getLatestResult();
+
+                if (result.isValid()) {
+                    // Access general information
+                    Pose3D botpose = result.getBotpose();
+                    double power;
+                    double captureLatency = result.getCaptureLatency();
+                    double targetingLatency = result.getTargetingLatency();
+                    double parseLatency = result.getParseLatency();
+                    double tx = result.getTx();
+                    double ty = result.getTy();
+                    double ta = result.getTa();
+
+                    //just tells you what tag we're looking at
+                    List<LLResultTypes.FiducialResult> fiducialResults = result.getFiducialResults();
+                    for (LLResultTypes.FiducialResult fr : fiducialResults) {
+                        telemetry.addData("Fiducial", "ID: %d, Family: %s, X: %.2f, Y: %.2f", fr.getFiducialId(), fr.getFamily(), fr.getTargetXDegrees(), fr.getTargetYDegrees());
+                    }
+
+                    if (Math.abs(tx) < 0.5) {
+                        power = 0;
+                    }
+
+                    double kP = 0.04; //power constant
+                    power = kP * tx;
+
+                    frontLeft.setPower(-power);
+                    frontRight.setPower(power);
+                    backLeft.setPower(-power);
+                    backRight.setPower(power);
+
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("turn power", power);
+                    telemetry.update();
+
+                }
+
+
+
             // Some more telemetry data. Note that once telemetry is updated, the previous telemetry data will be erased.
             //telemetry.addData("Status", "Running");
             //telemetry.addData("Heading", heading);
             //telemetry.addData("Pitch", pitch);
             //telemetry.addData("Roll", roll);
-            
+
            /* YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
 
             limelight.updateRobotOrientation(orientation.getYaw());

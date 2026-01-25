@@ -1,5 +1,5 @@
 
-package org.firstinspires.ftc.teamcode22482;
+package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -25,7 +25,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 @Autonomous
 
-public class ShortRedDecodeAuto extends LinearOpMode {
+public class LongBlueDecodeAuto extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
@@ -273,113 +273,29 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 2450;
+        double targetRPM = 4500;
 
-        //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
-
-        // 1. Flywheel spin up
-        blocker.setPosition(0); // 0 means closed -- cannot fire
-
-        double t1 = runTime.seconds();
         double dt = 0;
-        //1. back up to shooting position
-        flywheel1.setPower(0.65);
+        double t1 = runTime.seconds();
 
-        //flywheel.setTargetRPM(targetRPM);
-        //intake.setPower(0.6);
-        driveForwardInches(-38, 0.75);
-        // rotateDegrees(10, 0.50);
-
-        //2. spin up the flywheel
-        while (dt < 6) {
-            flywheel.setTargetRPM(targetRPM);
+        while (dt < 15) {
+            telemetry.addData("speed", flywheel1.getVelocity());
+            telemetry.update();
+            if (flywheel1.getVelocity() < 1450) {
+                flywheel.setTargetRPM(targetRPM);
+            }
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 2.5) {
+            if (flywheel1.getVelocity() > 1450) {
                 blocker.setPosition(1);
             }
-            if (dt > 2.6) {
-                intake.setPower(0.5);
-            }
-        }
-
-        blocker.setPosition(0);
-        flywheel1.setPower(0);
-        //3. turn 45 degrees left
-        rotateDegrees(40, 0.50);
-
-        // blocker.setPosition(0);
-
-        // ----------------------------------------------------------------
-        //4. intake 1st spike mark
-        intake.setPower(1);
-        sleep(500);
-        driveRightInches(15, 0.75);
-        driveForwardInches(36, 0.6);
-        sleep(500);
-        flywheel1.setPower(0.65);
-        driveForwardInches(-25,0.75);
-        driveRightInches(-8, 0.75);
-        rotateDegrees(-50,0.50);
-
-        //5. shoot
-        dt = 0;
-        t1 = runTime.seconds();
-
-        flywheel.setTargetRPM(targetRPM);
-        while (dt < 4.5) {
-            flywheel.setTargetRPM(targetRPM);
-            dt = runTime.seconds() - t1;
-            //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(1);
-            }
-            if (dt > 1.6) {
-                intake.setPower(0.45);
-            }
-        }
-        //6. reset shooting system for next move
-        flywheel1.setPower(0);
-        blocker.setPosition(0);
-
-        // 2nd spike
-        //7. turn 45 degrees left
-        rotateDegrees(50, 0.50);
-
-        //8. intake 2nd spike mark
-        intake.setPower(1);
-        rotateDegrees(-5,0.75);
-        driveRightInches(28,0.75);
-        rotateDegrees(5,0.75);
-        driveForwardInches(22,0.6);
-        sleep(500);
-
-        driveForwardInches(-12,0.75);
-        rotateDegrees(-50, 0.50);
-        flywheel1.setPower(0.65);
-        driveRightInches(-36,0.75);
-        rotateDegrees(-8,0.50);
-        driveForwardInches(7,0.75);
-
-        dt = 0;
-        t1 = runTime.seconds();
-
-        // Shoot second "spike?"
-        flywheel.setTargetRPM(targetRPM);
-        while (dt < 5) {
-            flywheel.setTargetRPM(targetRPM);
-            dt = runTime.seconds() - t1;
-            //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(1);
-            }
-            if (dt > 1.6) {
-                intake.setPower(0.45);
+            if (flywheel1.getVelocity() > 1450) {
+                intake.setPower(0.32);
             }
         }
 
         // GET OFF THE LINE!
-        driveRightInches(28,0.75);
+        driveForwardInches(12,0.6);
 
     }
 }

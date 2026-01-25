@@ -1,5 +1,5 @@
 
-package org.firstinspires.ftc.teamcode22482;
+package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -25,7 +25,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 @Autonomous
 
-public class ShortBlueDecodeAuto extends LinearOpMode {
+public class ShortRedDecodeAuto extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
@@ -286,9 +286,9 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         flywheel1.setPower(0.65);
 
         //flywheel.setTargetRPM(targetRPM);
-        intake.setPower(0.2);
+        //intake.setPower(0.6);
         driveForwardInches(-38, 0.75);
-        rotateDegrees(-10, 0.50);
+        // rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
         while (dt < 6) {
@@ -298,36 +298,36 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
             if (dt > 2.5) {
                 blocker.setPosition(1);
             }
-            if (dt > 2.5) {
-                intake.setPower(0.45);
+            if (dt > 2.6) {
+                intake.setPower(0.5);
             }
         }
 
-        //blocker.setPosition(0);
+        blocker.setPosition(0);
         flywheel1.setPower(0);
         //3. turn 45 degrees left
-        rotateDegrees(-44, 0.50);
+        rotateDegrees(40, 0.50);
 
-        blocker.setPosition(0);
+        // blocker.setPosition(0);
 
         // ----------------------------------------------------------------
         //4. intake 1st spike mark
         intake.setPower(1);
         sleep(500);
-        driveRightInches(-16, 0.75);
-        driveForwardInches(26, 0.6);
+        driveRightInches(15, 0.75);
+        driveForwardInches(36, 0.6);
         sleep(500);
         flywheel1.setPower(0.65);
-        driveForwardInches(-20,0.75);
-        driveRightInches(6, 0.75);
-        rotateDegrees(50,0.50);
+        driveForwardInches(-25,0.75);
+        driveRightInches(-8, 0.75);
+        rotateDegrees(-50,0.50);
 
         //5. shoot
         dt = 0;
         t1 = runTime.seconds();
 
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 5) {
+        while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
@@ -338,28 +338,28 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
                 intake.setPower(0.45);
             }
         }
-        //6. reset for next move
+        //6. reset shooting system for next move
         flywheel1.setPower(0);
         blocker.setPosition(0);
 
-        // --------------------------------------------------------------------
         // 2nd spike
         //7. turn 45 degrees left
-        rotateDegrees(-50, 0.50);
+        rotateDegrees(50, 0.50);
 
         //8. intake 2nd spike mark
         intake.setPower(1);
-        driveRightInches(-29,0.75);
-        driveForwardInches(32,0.6);
+        rotateDegrees(-5,0.75);
+        driveRightInches(28,0.75);
+        rotateDegrees(5,0.75);
+        driveForwardInches(22,0.6);
         sleep(500);
 
-        driveForwardInches(-8,0.75);
-        rotateDegrees(50, 0.50);
+        driveForwardInches(-12,0.75);
+        rotateDegrees(-50, 0.50);
         flywheel1.setPower(0.65);
-        driveRightInches(38,0.75);
-        rotateDegrees(5,0.50);
+        driveRightInches(-36,0.75);
+        rotateDegrees(-8,0.50);
         driveForwardInches(7,0.75);
-
 
         dt = 0;
         t1 = runTime.seconds();
@@ -379,7 +379,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         }
 
         // GET OFF THE LINE!
-        driveRightInches(-28,0.75);
+        driveRightInches(28,0.75);
 
     }
 }

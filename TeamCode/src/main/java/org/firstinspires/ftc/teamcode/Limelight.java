@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode22482;
+package org.firstinspires.ftc.teamcode;
 
 import org.json.JSONObject;
 import java.net.URL;
