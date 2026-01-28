@@ -3,20 +3,44 @@ package org.firstinspires.ftc.teamcode;
 
 // We need to import external code (code someone else wrote) to make the robot run
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
+import android.util.Size;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
-
+import java.util.Timer;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import java.util.List;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DcMotorController;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple.Direction;
+import com.qualcomm.robotcore.hardware.HardwareDevice;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.IMU;
-
+import com.qualcomm.robotcore.util.Range;
+import org.firstinspires.ftc.teamcode.PIDController;
+import org.firstinspires.ftc.teamcode.FlywheelShoot;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
 
 
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -45,7 +69,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
         double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
                 (WHEEL_DIAMETER_INCHES * 3.1415);
-//Change these values to adjust speeds                               
+//Change these values to adjust speeds
 
         double inches = degrees / 4.8;
         int ticks = (int)(inches * COUNTS_PER_INCH);
@@ -92,6 +116,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     private Servo blocker;
     private IMU imu;
     private DcMotor intake;
+    private DcMotor conveyorBelt;
 
     private ElapsedTime timer = new ElapsedTime();
     private VoltageSensor voltageSensor;
@@ -107,7 +132,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     //   they can sometimes help the compiler catch errors in the code.
 
     // Here is the most important function of the program, runOpMode. The code in here
-    // begins executing as soon as you hit the INIT button 
+    // begins executing as soon as you hit the INIT button
     public void runOpMode() {
 
         // The following lines of code link the objects we declared above to the
@@ -151,10 +176,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
 
         // These lines create 2 instances of the PID controller class.
-        // A PID controller has three parts: a P term, an I term, and a D term(surprisingly enough).
+        // A PID controller has three parts: a P term, an I term, and a D term(suprisingly enough).
         // The P term stands for proportional, and effects how quickly the motor responds to changes in output.
         // A high P value will cause your controller to very quickly and strongly respond to any change.
-        // Too high of a value can lead to oscillation and surges of power.
+        // Too high of a value can lead to ocillation and surges of power.
         // A low P value means that your controller will take a very long time to reach its target and will recover slowly.
         // The D term is derivative, and helps dampens small changes.
 
@@ -177,7 +202,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         .build();*/
 
         // telemetry.addData shoves the data we give it into a buffer
-        // telemetry.update takes the contents of that buffer and outputs it on 
+        // telemetry.update takes the contents of that buffer and outputs it on
         // the driver station. Then it deletes the buffer.
         // This can be useful for checking power levels of motors, or the positioning
         // of servos, but doesn't really 'do anything'.
@@ -195,7 +220,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         // waiting for the play button to be pressed.
         waitForStart();
 
-        // Declarations of variables representing the power levels of each of the four 
+        // Declarations of variables representing the power levels of each of the four
         //   drive motors. These are all on a scale from 0 to 1 (any values greater than 1
         //   or less than 0 will basically act the same as just a 1 or a 0)
         //double fl; //front-left power
@@ -213,16 +238,24 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         int legTarget;
         double legPower = 1;
 
+        double kP = 0.03;
+        double kI = 0.0;
+        double kD = 0.002;
+
+        double integral = 0;
+        double lastError = 0;
+        double lastTime = timer.seconds();
+
         FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.005, 0.0, 0.0001, 0.00042);
 
         // "power_multiplier" is a general value that allows us to control the global
         //   power level of the drive motors. Although currently useless, if we ever
-        //   wanted a control to slow down the speed of the robot, we would need to use 
+        //   wanted a control to slow down the speed of the robot, we would need to use
         //   this variable
         double power_multiplier = -1;
-        // This is the main loop of the program, the stuff that runs continuously 
+        // This is the main loop of the program, the stuff that runs continuously
         //   while the op mode is running. "opModeIsActive()" is a function that returns
-        //   true so long as the op mode is active/running, so as soon as we hit stop 
+        //   true so long as the op mode is active/running, so as soon as we hit stop
         //   the loop will terminate.
         while (opModeIsActive()) {
 
@@ -231,7 +264,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             //telemetry.addData("Heading", heading);
             //telemetry.addData("Pitch", pitch);
             //telemetry.addData("Roll", roll);
-            
+
            /* YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
 
             limelight.updateRobotOrientation(orientation.getYaw());
@@ -266,8 +299,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             double br = (x + y);
             double fr = -(y - x);
             double bl = -(y - x);
-
-            //Mecanum drive code DON'T TOUCH THIS
+            //---------- GAMEPAD 1--------------
+            //Mecanum drive code DONT TOUCH THIS
             if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
                 double x_slow = -gamepad1.left_stick_x;
                 double y_slow = gamepad1.left_stick_y;
@@ -306,35 +339,134 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
             //under construction...
 
+
+            //----------GAMEPAD 2------------
             if (gamepad2.y) {
                 blocker.setPosition(0);
             } else if (gamepad2.b) {
                 blocker.setPosition(0.2);
             }
 
-            if (gamepad1.a) {
-                rotateDegrees(180, 0.2);
-            } else if (gamepad1.x) {
-                rotateDegrees(-180, 0.2);
-            }
-
-            boolean aiming = gamepad1.left_trigger > 0.5;
-
             frontLeft.setPower(-fl);
             frontRight.setPower(-fr);
             backLeft.setPower(bl);
             backRight.setPower(-br);
             intake.setPower(intakePower);
+            targetRPM = 2350;
 
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
             targetRPM = 0;
             if (shootShort) {
-                targetRPM = 2400;
+                //targetRPM = 2350;
+
+                //LIMELIGHT AUTO ALIGNER
+                LLResult result = limelight.getLatestResult();
+
+                if (result.isValid()) {
+                    double tx = result.getTx();
+                    double currentTime = timer .seconds();
+                    double dt = currentTime - lastTime;
+
+                    // PID terms
+                    double error = tx;
+                    integral += error * dt;
+                    double derivative = (error - lastError) / dt;
+
+                    double turn = kP * error + kI * integral + kD * derivative;
+
+                    // Deadband to prevent jitter
+                    if (Math.abs(error) < 0.5) {
+                        turn = 0;
+                        integral = 0;   // reset integral when aligned
+                    }
+
+                    // Normalize wheel power
+                    double leftPower = -turn;
+                    double rightPower = turn;
+
+                    double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+                    if (max > 1.0) {
+                        leftPower /= max;
+                        rightPower /= max;
+                    }
+
+                    // Apply to motors
+                    frontLeft.setPower(leftPower);
+                    backLeft.setPower(-leftPower);
+                    frontRight.setPower(rightPower);
+                    backRight.setPower(-rightPower);
+
+                    // Save state
+                    lastError = error;
+                    lastTime = currentTime;
+
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("turn", turn);
+                    telemetry.update();
+
+                } else {
+                    frontLeft.setPower(0);
+                    frontRight.setPower(0);
+                    backLeft.setPower(0);
+                    backRight.setPower(0);
+                }
             } else if (shootLong) {
-                targetRPM = 3500;
-            } else {
+                targetRPM = 3400;
+
+                //LIMELIGHT AUTO ALIGNER
+                LLResult result = limelight.getLatestResult();
+
+                if (result.isValid()) {
+                    double tx = result.getTx();
+                    double currentTime = timer .seconds();
+                    double dt = currentTime - lastTime;
+
+                    // PID terms
+                    double error = tx;
+                    integral += error * dt;
+                    double derivative = (error - lastError) / dt;
+
+                    double turn = kP * error + kI * integral + kD * derivative;
+
+                    // Deadband to prevent jitter
+                    if (Math.abs(error) < 0.5) {
+                        turn = 0;
+                        integral = 0;   // reset integral when aligned
+                    }
+
+                    // Normalize wheel power
+                    double leftPower = -turn;
+                    double rightPower = turn;
+
+                    double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+                    if (max > 1.0) {
+                        leftPower /= max;
+                        rightPower /= max;
+                    }
+
+                    // Apply to motors
+                    frontLeft.setPower(leftPower);
+                    backLeft.setPower(-leftPower);
+                    frontRight.setPower(rightPower);
+                    backRight.setPower(-rightPower);
+
+                    // Save state
+                    lastError = error;
+                    lastTime = currentTime;
+
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("turn", turn);
+                    telemetry.update();
+
+                } else {
+                    frontLeft.setPower(0);
+                    frontRight.setPower(0);
+                    backLeft.setPower(0);
+                    backRight.setPower(0);
+                }
+            }   else {
                 targetRPM = 0;
             }
 
@@ -355,14 +487,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 gamepad2.rumble(100);
             }
 
-            if (shootShort) {
+            if (shootShort && flywheel.isAtSpeed(2350, 40)) {
                 blocker.setPosition(1);
                 if (!gamepad2.left_bumper) {
                     blocker.setPosition(0);
                 }
             }
 
-            if (shootLong) {
+            if (shootLong && flywheel.isAtSpeed(3400, 60)) {
                 blocker.setPosition(1);
                 if (!gamepad2.right_bumper) {
                     blocker.setPosition(0);
@@ -371,7 +503,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
             if (targetRPM == 0)  {
                 blocker.setPosition(0);
-                flywheel1.setPower(0);
+                //flywheel1.setPower(0);
                 //flywheelPID.reset();
             }
 
