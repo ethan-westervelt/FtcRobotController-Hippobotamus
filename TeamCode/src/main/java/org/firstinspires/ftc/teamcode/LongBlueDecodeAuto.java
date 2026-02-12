@@ -34,6 +34,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     private DcMotor intake;
     private DcMotorEx flywheel1;
     private Servo blocker;
+    private Servo hood;
     // private IMU imu;
     ElapsedTime timer = new ElapsedTime();
 
@@ -237,19 +238,31 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     public void runOpMode() {
 
         // Initialize the drive system variables. you can ignore this. its all good and shouldnt need any changes
-        frontLeft  = hardwareMap.get(DcMotor.class, "front_left");
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontLeft = hardwareMap.get(DcMotor.class, "front_left");
+        //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
+        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
+        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //BACK_RIGHT
         backRight = hardwareMap.get(DcMotor.class, "back_right");
+        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         intake = hardwareMap.get(DcMotor.class, "intake");
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         blocker = hardwareMap.get(Servo.class, "blocker");
+        hood = hardwareMap.get(Servo.class, "hood");
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -273,12 +286,14 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 4500;
+        double targetRPM = 3100;
+
+        hood.setPosition(0.8);
 
         double dt = 0;
         double t1 = runTime.seconds();
 
-        while (dt < 15) {
+        while (dt < 10) {
             telemetry.addData("speed", flywheel1.getVelocity());
             telemetry.update();
             if (flywheel1.getVelocity() < 1450) {
@@ -286,16 +301,48 @@ public class LongBlueDecodeAuto extends LinearOpMode {
             }
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (flywheel1.getVelocity() > 1450) {
-                blocker.setPosition(1);
+            if (flywheel1.getVelocity() > 1400) {
+                blocker.setPosition(0.2);
             }
-            if (flywheel1.getVelocity() > 1450) {
+            if (flywheel1.getVelocity() > 1400) {
                 intake.setPower(0.32);
             }
         }
 
-        // GET OFF THE LINE!
-        driveForwardInches(12,0.6);
 
+        //1st spike mark
+        blocker.setPosition(0);
+        driveForwardInches(15,0.6);
+        rotateDegrees(-70, 0.5);
+        intake.setPower(1);
+        driveRightInches(5,0.5);
+        driveForwardInches(34, 0.5);
+        sleep(500);
+        driveRightInches(-5,0.5);
+        driveForwardInches(-34, 0.5);
+        rotateDegrees(70, 0.5);
+        intake.setPower(0);
+        driveForwardInches(-12,0.6);
+
+        //dt = 0;
+
+        runTime.reset();
+
+        while (runTime.seconds() > 0 && runTime.seconds() < 6) {
+            if (flywheel1.getVelocity() < 1450) {
+                flywheel.setTargetRPM(targetRPM);
+            }
+            dt = runTime.seconds();
+            //3. open the gate to shoot
+            if (flywheel1.getVelocity() > 1400) {
+                blocker.setPosition(0.2);
+            }
+            if (flywheel1.getVelocity() > 1400) {
+                intake.setPower(0.32);
+            }
+        }
+
+        //Get off the line!!
+        driveForwardInches(12,0.6);
     }
 }

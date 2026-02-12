@@ -34,6 +34,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     private DcMotor intake;
     private DcMotorEx flywheel1;
     private Servo blocker;
+    private Servo hood;
     // private IMU imu;
     ElapsedTime timer = new ElapsedTime();
 
@@ -237,19 +238,31 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     public void runOpMode() {
 
         // Initialize the drive system variables. you can ignore this. its all good and shouldnt need any changes
-        frontLeft  = hardwareMap.get(DcMotor.class, "front_left");
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        frontRight = hardwareMap.get(DcMotor.class, "front_right");
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
-        backLeft = hardwareMap.get(DcMotor.class, "back_left");
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        backRight = hardwareMap.get(DcMotor.class, "back_right");
+        //FRONT_LEFT
+        frontLeft = hardwareMap.get(DcMotor.class, "front_left");
+        //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
+        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
+        //FRONT_RIGHT
+        frontRight = hardwareMap.get(DcMotor.class, "front_right");
+        //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //BACK_LEFT
+        backLeft = hardwareMap.get(DcMotor.class, "back_left");
+        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //BACK_RIGHT
+        backRight = hardwareMap.get(DcMotor.class, "back_right");
+        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+
         intake = hardwareMap.get(DcMotor.class, "intake");
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         blocker = hardwareMap.get(Servo.class, "blocker");
+        hood = hardwareMap.get(Servo.class, "hood");
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -273,17 +286,24 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 2450;
+
+
+        double targetRPM = 2400; //was 2450
+
+        while (runTime.seconds() < 1.2) {
+            flywheel.setTargetRPM(targetRPM);
+        }
 
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
         // 1. Flywheel spin up
         blocker.setPosition(0); // 0 means closed -- cannot fire
+        hood.setPosition(0.2);
 
         double t1 = runTime.seconds();
         double dt = 0;
         //1. back up to shooting position
-        flywheel1.setPower(0.65);
+        flywheel.setTargetRPM(targetRPM);
 
         //flywheel.setTargetRPM(targetRPM);
         //intake.setPower(0.6);
@@ -291,7 +311,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
-        while (dt < 6) {
+        while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
@@ -315,12 +335,12 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         intake.setPower(1);
         sleep(500);
         driveRightInches(15, 0.75);
-        driveForwardInches(36, 0.6);
+        driveForwardInches(32, 0.6);
         sleep(500);
         flywheel1.setPower(0.65);
-        driveForwardInches(-25,0.75);
-        driveRightInches(-8, 0.75);
-        rotateDegrees(-50,0.50);
+        driveForwardInches(-20,0.75);
+        driveRightInches(-16, 0.75);
+        rotateDegrees(-45,0.50);
 
         //5. shoot
         dt = 0;
@@ -349,9 +369,9 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         //8. intake 2nd spike mark
         intake.setPower(1);
         rotateDegrees(-5,0.75);
-        driveRightInches(28,0.75);
+        driveRightInches(30,0.75);
         rotateDegrees(5,0.75);
-        driveForwardInches(22,0.6);
+        driveForwardInches(20,0.6);
         sleep(500);
 
         driveForwardInches(-12,0.75);
@@ -364,9 +384,10 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         dt = 0;
         t1 = runTime.seconds();
 
+        rotateDegrees(10,0.75);
         // Shoot second "spike?"
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 5) {
+        while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
@@ -379,7 +400,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         }
 
         // GET OFF THE LINE!
-        driveRightInches(28,0.75);
+        driveRightInches(12,1);
 
     }
 }

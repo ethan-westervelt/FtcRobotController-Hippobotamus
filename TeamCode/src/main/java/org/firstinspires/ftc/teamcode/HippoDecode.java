@@ -35,7 +35,7 @@ import java.util.List;
 @TeleOp
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode2026_rpgSpare extends LinearOpMode {
+public class HippoDecode extends LinearOpMode {
 
     public void stopDrive() {
         frontLeft.setPower(0);

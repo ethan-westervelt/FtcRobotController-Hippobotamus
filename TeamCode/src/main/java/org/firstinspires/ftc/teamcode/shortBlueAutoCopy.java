@@ -12,6 +12,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 //import org.json.JSONObject;
 //import org.json.JSONArray;
 //import org.firstinspires.ftc.teamcode.Limelight;
@@ -25,7 +27,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 @Autonomous
 
-public class LongRedDecodeAuto extends LinearOpMode {
+public class shortBlueAutoCopy extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
@@ -35,6 +37,9 @@ public class LongRedDecodeAuto extends LinearOpMode {
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
+    private Limelight3A limelight;
+
+
     // private IMU imu;
     ElapsedTime timer = new ElapsedTime();
 
@@ -238,6 +243,7 @@ public class LongRedDecodeAuto extends LinearOpMode {
     public void runOpMode() {
 
         // Initialize the drive system variables. you can ignore this. its all good and shouldnt need any changes
+        //FRONT_LEFT
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
         //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
         //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -264,6 +270,12 @@ public class LongRedDecodeAuto extends LinearOpMode {
         blocker = hardwareMap.get(Servo.class, "blocker");
         hood = hardwareMap.get(Servo.class, "hood");
 
+        //LIMELIGHT
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(0);
+        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.start(); // This tells Limelight to start looking!
+
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -283,80 +295,121 @@ public class LongRedDecodeAuto extends LinearOpMode {
         telemetry.update();
 
         FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.007, 0.0, 0.0001, 0.00042);
+        AutoAlignHelper aligner = new AutoAlignHelper(limelight, frontLeft, frontRight, backLeft, backRight, telemetry);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 3100;
+        double targetRPM = 2450;
 
-        hood.setPosition(0.8);
+        hood.setPosition(0.2);
+        //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
-        double dt = 0;
+        // 1. Flywheel spin up
+        blocker.setPosition(0); // 0 means closed -- cannot fire
+
         double t1 = runTime.seconds();
+        double dt = 0;
+        //1. back up to shooting position
+        flywheel1.setPower(0.65);
+        aligner.update();
 
+        //flywheel.setTargetRPM(targetRPM);
+        intake.setPower(0.2);
+        driveForwardInches(-38, 0.75);
+        rotateDegrees(-10, 0.50);
 
-            telemetry.addData("time", runTime.seconds());
-            telemetry.addData("speed", flywheel1.getVelocity());
-            telemetry.update();
-
-        while (dt < 10) {
-            telemetry.addData("speed", flywheel1.getVelocity());
-            telemetry.update();
-            if (flywheel1.getVelocity() < 1450) {
-                flywheel.setTargetRPM(targetRPM);
-            }
+        //2. spin up the flywheel
+        while (dt < 6) {
+            flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.2);
+            if (dt > 2.5) {
+                blocker.setPosition(1);
             }
-            if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.32);
+            if (dt > 2.5) {
+                intake.setPower(0.45);
             }
         }
 
+        //blocker.setPosition(0);
+        flywheel1.setPower(0);
+        //3. turn 45 degrees left
+        rotateDegrees(-44, 0.50);
 
-        //1st spike mark
         blocker.setPosition(0);
-        driveForwardInches(15,0.6);
-        rotateDegrees(70, 0.5);
+
+        // ----------------------------------------------------------------
+        //4. intake 1st spike mark
         intake.setPower(1);
-        driveRightInches(-8,0.5);
-        driveForwardInches(34, 0.5);
         sleep(500);
-        driveRightInches(8,0.5);
-        driveForwardInches(-34, 0.5);
-        rotateDegrees(-70, 0.5);
-        intake.setPower(0);
-        driveForwardInches(-12,0.6);
+        driveRightInches(-16, 0.75);
+        driveForwardInches(26, 0.6);
+        sleep(500);
+        flywheel1.setPower(0.65);
+        driveForwardInches(-20,0.75);
+        driveRightInches(6, 0.75);
+        rotateDegrees(50,0.50);
 
-        runTime.reset();
-        targetRPM = 2950;
+        //5. shoot
+        dt = 0;
+        t1 = runTime.seconds();
 
-        while (runTime.seconds() > 0 && runTime.seconds() < 6) {
-            if (flywheel1.getVelocity() < 1450) {
-                flywheel.setTargetRPM(targetRPM);
-            }
-            dt = runTime.seconds();
+        aligner.update();
+        flywheel.setTargetRPM(targetRPM);
+        while (dt < 5) {
+            flywheel.setTargetRPM(targetRPM);
+            dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.2);
+            if (dt > 1.5) {
+                blocker.setPosition(1);
             }
-            if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.32);
+            if (dt > 1.6) {
+                intake.setPower(0.45);
             }
         }
-        /*flywheel1.setPower(0.6);
-        intake.setPower(0.32);
-        blocker.setPosition(0.2);
-        sleep(6500);*/
+        //6. reset for next move
+        flywheel1.setPower(0);
+        blocker.setPosition(0);
 
-        /*while ((runTime.seconds()) + 5 > 26) {
-            flywheel.setTargetRPM(3100);
-            intake.setPower(0.32);
-            blocker.setPosition(0.2);
-        }*/
+        // --------------------------------------------------------------------
+        // 2nd spike
+        //7. turn 45 degrees left
+        rotateDegrees(-50, 0.50);
 
-        //Get off the line!!
-        driveForwardInches(12,0.6);
+        //8. intake 2nd spike mark
+        intake.setPower(1);
+        driveRightInches(-29,0.75);
+        driveForwardInches(32,0.6);
+        sleep(500);
+
+        driveForwardInches(-8,0.75);
+        rotateDegrees(50, 0.50);
+        flywheel1.setPower(0.65);
+        driveRightInches(38,0.75);
+        rotateDegrees(5,0.50);
+        driveForwardInches(7,0.75);
+
+
+        dt = 0;
+        t1 = runTime.seconds();
+
+        // Shoot second "spike?"
+        aligner.update();
+        flywheel.setTargetRPM(targetRPM);
+        while (dt < 5) {
+            flywheel.setTargetRPM(targetRPM);
+            dt = runTime.seconds() - t1;
+            //3. open the gate to shoot
+            if (dt > 1.5) {
+                blocker.setPosition(1);
+            }
+            if (dt > 1.6) {
+                intake.setPower(0.45);
+            }
+        }
+
+        // GET OFF THE LINE!
+        driveRightInches(-28,0.75);
+
     }
 }

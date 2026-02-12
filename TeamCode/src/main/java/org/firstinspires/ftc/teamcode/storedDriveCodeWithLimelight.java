@@ -4,6 +4,7 @@ package org.firstinspires.ftc.teamcode;
 // We need to import external code (code someone else wrote) to make the robot run
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -24,9 +25,10 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 //Without it, the driver station won't be able to use the op mode.
 
 @TeleOp
+@Disabled
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode2026_rpg extends LinearOpMode {
+public class storedDriveCodeWithLimelight extends LinearOpMode {
 
     public void stopDrive() {
         frontLeft.setPower(0);
@@ -274,10 +276,113 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             if (shootShort) {
                 targetRPM = 2350;
 
+                //LIMELIGHT AUTO ALIGNER
+                LLResult result = limelight.getLatestResult();
 
+                if (result.isValid()) {
+                    double tx = result.getTx();
+                    double currentTime = timer .seconds();
+                    double dt = result.getTargetingLatency() / 1000.0; //replaced: currentTime - lastTime;
+
+                    // PID terms
+                    double error = tx;
+                    integral += error * dt;
+                    double derivative = (error - lastError) / dt;
+
+                    double turn = kP * error + kI * integral + kD * derivative;
+
+                    // Deadband to prevent jitter
+                    if (Math.abs(error) < 0.5) {
+                        turn = 0;
+                        integral = 0;   // reset integral when aligned
+                    }
+
+                    // Normalize wheel power
+                    double leftPower = -turn;
+                    double rightPower = turn;
+
+                    double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+                    if (max > 1.0) {
+                        leftPower /= max;
+                        rightPower /= max;
+                    }
+
+                    // Apply to motors
+                    frontLeft.setPower(leftPower);
+                    backLeft.setPower(-leftPower);
+                    frontRight.setPower(rightPower);
+                    backRight.setPower(-rightPower);
+
+                    // Save state
+                    lastError = error;
+                    lastTime = currentTime;
+
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("turn", turn);
+                    telemetry.update();
+
+                } else {
+                    frontLeft.setPower(0);
+                    frontRight.setPower(0);
+                    backLeft.setPower(0);
+                    backRight.setPower(0);
+                }
             } else if (shootLong) {
                 targetRPM = 3100;
 
+                //LIMELIGHT AUTO ALIGNER
+                LLResult result = limelight.getLatestResult();
+
+                if (result.isValid()) {
+                    double tx = result.getTx();
+                    double currentTime = timer.seconds();
+                    double dt = currentTime - lastTime;
+
+                    double ref = 0;
+
+                    // PID terms
+                    double error = tx - ref;
+                    integral += error * dt;
+                    double derivative = (error - lastError) / dt;
+
+                    double turn = kP * error + kI * integral + kD * derivative;
+
+                    // Deadband to prevent jitter
+                    if (Math.abs(error) < 0.5) {
+                        turn = 0;
+                        integral = 0;   // reset integral when aligned
+                    }
+
+                    // Normalize wheel power
+                    double leftPower = -turn;
+                    double rightPower = turn;
+
+                    double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+                    if (max > 1.0) {
+                        leftPower /= max;
+                        rightPower /= max;
+                    }
+
+                    // Apply to motors
+                    frontLeft.setPower(leftPower);
+                    backLeft.setPower(-leftPower);
+                    frontRight.setPower(rightPower);
+                    backRight.setPower(-rightPower);
+
+                    // Save state
+                    lastError = error;
+                    lastTime = currentTime;
+
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("turn", turn);
+                    telemetry.update();
+
+                } else {
+                    frontLeft.setPower(0);
+                    frontRight.setPower(0);
+                    backLeft.setPower(0);
+                    backRight.setPower(0);
+                }
             }   else {
                 targetRPM = 1850;
             }
@@ -289,18 +394,20 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             flywheel.setTargetRPM(targetRPM);
 
             // Read velocity in ticks/sec
-
+            LLResult result = limelight.getLatestResult();
+            double tx = result.getTx();
             double currentTPS = flywheel1.getVelocity();   // ticks per second
             double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
             telemetry.addData("currentTPS", currentTPS);
             telemetry.addData("targetTPS", targetTPS);
+            telemetry.addData("tx", tx);
             telemetry.update();
 
             if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
                 gamepad2.rumble(100);
             }
 
-            if ((shootShort && flywheel.isAtSpeed(2350, 200)) || (shootLong && flywheel.isAtSpeed(3100, 60))) {
+            if ((shootShort && flywheel.isAtSpeed(2350, 150)) || (shootLong && flywheel.isAtSpeed(3100, 60))) {
                 blocker.setPosition(0.2);
             } else {
                 blocker.setPosition(0);

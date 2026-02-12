@@ -39,7 +39,7 @@ public class AutoAlignHelper {
         lastTime = timer.seconds();
     }
 
-    /** Call this repeatedly inside your OpMode loop */
+
     public void update() {
         LLResult result = limelight.getLatestResult();
 
