@@ -40,7 +40,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     private DcMotor frontRight;
     private DcMotor backLeft;
     private DcMotor backRight;
-    private DcMotor stand;
+    //private DcMotor stand;
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
@@ -72,7 +72,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //  FRONT_LEFT
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
         //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
@@ -87,7 +87,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //BACK_RIGHT
         backRight = hardwareMap.get(DcMotor.class, "back_right");
         //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
 
         //FLYWHEEL1
@@ -95,9 +95,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //STAND
-        stand = hardwareMap.get(DcMotor.class, "stand");
-        stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //stand = hardwareMap.get(DcMotor.class, "stand");
+        //stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //IMU
         imu = hardwareMap.get(IMU.class, "imu");
@@ -148,7 +148,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         telemetry.addData("Caleb", "says hi");
         telemetry.addData("Ethan","says hello");
         telemetry.addData("Tyler","also says hi");
-        telemetry.addData("Asher", "loves Evelyn");
+        telemetry.addData("Asher", "loves Mr Dubois");
         telemetry.addData("And","vice versa");
         telemetry.update();
 
@@ -189,15 +189,18 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 intakePower = 0;
             }
 
-            double x = -gamepad1.right_stick_x;
+            double x = gamepad1.right_stick_x;
             double y = gamepad1.right_stick_y;
 
             double fl = -(x + y);
             double br = (x + y);
             double fr = -(y - x);
             double bl = -(y - x);
+
             //---------- GAMEPAD 1--------------
             //Mecanum drive code DONT TOUCH THIS
+            // I'm touching it.  I think this code does nothing....
+            /*
             if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
                 double x_slow = -gamepad1.left_stick_x;
                 double y_slow = gamepad1.left_stick_y;
@@ -207,6 +210,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 fr = -(y - x) / 2;
                 bl = -(y - x) / 2;
             }
+            */
 
             //This is the code for the fast spin
             if (gamepad1.left_trigger != 0){
@@ -222,16 +226,18 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             }
 
             //Slow spin
+            // RPG 2026-02-14.  This was 0.3 but with the 20:1 ratio, we're going to try 0.5
+            double slowSpinFactor = 0.5;
             if (gamepad1.left_bumper){
-                fr = 0.3;
-                fl = -0.3;
-                br = -0.3;
-                bl = -0.3;
+                fr = slowSpinFactor;
+                fl = -slowSpinFactor;
+                br = -slowSpinFactor;
+                bl = -slowSpinFactor;
             } else if (gamepad1.right_bumper) {
-                fl = 0.3;
-                fr = -0.3;
-                bl = 0.3;
-                br = 0.3;
+                fl = slowSpinFactor;
+                fr = -slowSpinFactor;
+                bl = slowSpinFactor;
+                br = slowSpinFactor;
             }
 
             /*if (gamepad1.dpad_up) {
@@ -254,10 +260,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 blocker.setPosition(0.2);
             }
 
-            frontLeft.setPower(-fl);
-            frontRight.setPower(-fr);
+            frontLeft.setPower(fl);
+            frontRight.setPower(fr);
             backLeft.setPower(bl);
-            backRight.setPower(-br);
+            backRight.setPower(br);
             intake.setPower(intakePower);
 
             if (gamepad2.dpad_up) {
@@ -273,11 +279,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             targetRPM = 1850;
             if (shootShort) {
                 targetRPM = 2350;
-
-
             } else if (shootLong) {
                 targetRPM = 3100;
-
             }   else {
                 targetRPM = 1850;
             }
