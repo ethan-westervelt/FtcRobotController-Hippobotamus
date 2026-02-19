@@ -4,6 +4,8 @@ package org.firstinspires.ftc.teamcode;
 // We need to import external code (code someone else wrote) to make the robot run
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
 
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -13,7 +15,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 
@@ -40,7 +41,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     private DcMotor frontRight;
     private DcMotor backLeft;
     private DcMotor backRight;
-    private DcMotor stand;
+    //private DcMotor stand;
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
@@ -69,6 +70,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         // There are also lines that set behaviors for the motors, such as REVERSE or BRAKE.
         // Most lines that set behaviors say something like "set behavior" and the behavior in all caps.
 
+
+        //NOTE: WHEEL DIRECTIONS ARE AS IF YOU WERE
         //  FRONT_LEFT
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
         //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
@@ -77,7 +80,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
         //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
@@ -95,16 +98,16 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //STAND
-        stand = hardwareMap.get(DcMotor.class, "stand");
+        /*stand = hardwareMap.get(DcMotor.class, "stand");
         stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);*/
 
         //IMU
         imu = hardwareMap.get(IMU.class, "imu");
 
         //INTAKE
         intake = hardwareMap.get(DcMotor.class, "intake");
-        intake.setDirection(DcMotorSimple.Direction.REVERSE);
+        //intake.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BLOCKER
         blocker =  hardwareMap.get(Servo.class, "blocker");
@@ -119,10 +122,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         limelight.start(); // This tells Limelight to start looking!
 
         // These lines create 2 instances of the PID controller class.
-        // A PID controller has three parts: a P term, an I term, and a D term(suprisingly enough).
+        // A PID controller has three parts: a P term, an I term, and a D term(surprisingly enough).
         // The P term stands for proportional, and effects how quickly the motor responds to changes in output.
         // A high P value will cause your controller to very quickly and strongly respond to any change.
-        // Too high of a value can lead to ocillation and surges of power.
+        // Too high of a value can lead to oscillation and surges of power.
         // A low P value means that your controller will take a very long time to reach its target and will recover slowly.
         // The D term is derivative, and helps dampens small changes.
 
@@ -144,12 +147,13 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         // of servos, but doesn't really 'do anything'.
 
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Version", "3.3.0.1");
+        telemetry.addData("Version", "2026 V3");
         telemetry.addData("Caleb", "says hi");
         telemetry.addData("Ethan","says hello");
         telemetry.addData("Tyler","also says hi");
         telemetry.addData("Asher", "loves Evelyn");
         telemetry.addData("And","vice versa");
+        telemetry.addData("We're going", "to States!");
         telemetry.update();
 
         // Pretty self explanatory. The program pauses execution on the following line,
@@ -159,7 +163,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double intakePower;
         double targetRPM;
 
-        double kP = 0.02; //tuned down to try to fix drift
+        double kP = 0.04; //tuned down to try to fix drift
         double kI = 0.0;
         double kD = 0.002;
 
@@ -196,8 +200,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             double br = (x + y);
             double fr = -(y - x);
             double bl = -(y - x);
+            
             //---------- GAMEPAD 1--------------
-            //Mecanum drive code DONT TOUCH THIS
+            //Mecanum drive code DON'T TOUCH THIS
             if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
                 double x_slow = -gamepad1.left_stick_x;
                 double y_slow = gamepad1.left_stick_y;
@@ -274,7 +279,6 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             if (shootShort) {
                 targetRPM = 2350;
 
-
             } else if (shootLong) {
                 targetRPM = 3100;
 
@@ -300,8 +304,78 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 gamepad2.rumble(100);
             }
 
-            if ((shootShort && flywheel.isAtSpeed(2350, 200)) || (shootLong && flywheel.isAtSpeed(3100, 60))) {
+            if (shootShort) {
                 blocker.setPosition(0.2);
+            } else if (shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
+                blocker.setPosition(0.2);
+
+                limelight.pipelineSwitch(0);
+
+                LLResult result = limelight.getLatestResult();
+                LLStatus status = limelight.getStatus();
+
+                if (result.isValid()) {
+                    double tx = result.getTx();
+                    double currentTime = timer.seconds();
+                    double dt = currentTime - lastTime;//result.getTargetingLatency() / 1000.0; //replaced: currentTime - lastTime;
+
+                    // PID terms
+                    double error = tx;
+                    integral += error * dt;
+                    double derivative = (error - lastError) / dt;
+
+                    double turn = kP * error + kI * integral + kD * derivative;
+
+                    // Deadband to prevent jitter
+                    if (Math.abs(error) < 0.5) {
+                        turn = 0;
+                        integral = 0;   // reset integral when aligned
+                    }
+
+                    //double leftPower = turn;
+                    double rightPower = turn;
+
+                    double max = Math.abs(rightPower);//Math.max(Math.abs(leftPower), Math.abs(rightPower))
+
+                    if (max > 1.0) {
+                        //leftPower /= max;
+                        rightPower /= max;
+                    }
+
+                    lastError = error;
+                    lastTime = currentTime;
+
+                    frontRight.setPower(rightPower);
+                    frontLeft.setPower(-rightPower);
+                    backLeft.setPower(rightPower);
+                    backRight.setPower(-rightPower);
+
+                    telemetry.addData("Name", "%s",
+                            status.getName());
+                    telemetry.addData("LL", "Temp: %.1fC, CPU: %.1f%%, FPS: %d",
+                            status.getTemp(), status.getCpu(), (int) status.getFps());
+                    telemetry.addData("Pipeline", "Index: %d, Type: %s",
+                            status.getPipelineIndex(), status.getPipelineType());
+                    //telemetry.addData("max", max);
+                    telemetry.addData("last time", lastTime);
+                    telemetry.addData("current time", currentTime);
+                    telemetry.addData("dt", dt);
+                    telemetry.addData("turn", turn);
+                    telemetry.addData("result", "is valid");
+                    telemetry.addData("tx", tx);
+                    telemetry.addData("ta", result.getTa());
+                    //telemetry.addData("leftPower", leftPower);
+                    telemetry.addData("rightPower", rightPower);
+                    telemetry.update();
+                } else if (!result.isValid()) {
+                    frontRight.setPower(0);
+                    frontLeft.setPower(0);
+                    backLeft.setPower(0);
+                    backRight.setPower(0);
+                    telemetry.addData("result", "invalid");
+                    telemetry.update();
+                }
+
             } else {
                 blocker.setPosition(0);
             }

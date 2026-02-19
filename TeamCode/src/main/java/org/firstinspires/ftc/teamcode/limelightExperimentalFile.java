@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -12,9 +13,12 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 public class limelightExperimentalFile extends LinearOpMode {
 
     private Limelight3A limelight;
-    private DcMotor turret;
+    private DcMotor frontLeft;
+    private DcMotor frontRight;
+    private DcMotor backleft;
+    private DcMotor backRight;
     private ElapsedTime timer = new ElapsedTime();
-    double kP = 0.02; //tuned down to try to fix drift
+    double kP = 0.04; //tuned down to try to fix drift
     double kI = 0.0;
     double kD = 0.002;
 
@@ -25,14 +29,18 @@ public class limelightExperimentalFile extends LinearOpMode {
 
     public void runOpMode() {
 
-        turret = hardwareMap.get(DcMotor.class, "turret");
-        //turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        //turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        double turretAngle = turret.getCurrentPosition();
+        frontLeft = hardwareMap.get(DcMotor.class, "front_left");
+        frontRight = hardwareMap.get(DcMotor.class, "front_right");
+        backleft = hardwareMap.get(DcMotor.class, "back_left");
+        backleft.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight = hardwareMap.get(DcMotor.class, "back_right");
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        //double turretAngle = turret.getCurrentPosition();
+
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.setPollRateHz(50); // This sets how often we ask Limelight for data (100 times per second)
         limelight.start(); // This tells Limelight to start looking!
 
         waitForStart();
@@ -60,20 +68,23 @@ public class limelightExperimentalFile extends LinearOpMode {
                     integral = 0;   // reset integral when aligned
                 }
 
-                //double leftPower = -turn;
+                double leftPower = turn;
                 double rightPower = turn;
 
                 double max = Math.abs(rightPower);//Math.max(Math.abs(leftPower), Math.abs(rightPower))
 
                 if (max > 1.0) {
-                   //leftPower /= max;
+                   leftPower /= max;
                    rightPower /= max;
                 }
 
                 lastError = error;
                 lastTime = currentTime;
 
-                turret.setPower(rightPower);
+                frontRight.setPower(rightPower);
+                frontLeft.setPower(leftPower);
+                backleft.setPower(leftPower);
+                backRight.setPower(rightPower);
 
                 telemetry.addData("Name", "%s",
                         status.getName());
@@ -91,10 +102,12 @@ public class limelightExperimentalFile extends LinearOpMode {
                 telemetry.addData("ta", result.getTa());
                 //telemetry.addData("leftPower", leftPower);
                 telemetry.addData("rightPower", rightPower);
-                telemetry.addData("turret angle", turretAngle);
                 telemetry.update();
             } else if (!result.isValid()) {
-                turret.setPower(0);
+                frontRight.setPower(0.1);
+                frontLeft.setPower(0.1);
+                backleft.setPower(0.1);
+                backRight.setPower(0.1);
                 telemetry.addData("result", "invalid");
                 telemetry.update();
             }
