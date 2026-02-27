@@ -27,7 +27,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 @TeleOp
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode2026_rpg extends LinearOpMode {
+public class HippoDecode2026_BLUE extends LinearOpMode {
 
     public void stopDrive() {
         frontLeft.setPower(0);
@@ -163,7 +163,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double intakePower;
         double targetRPM;
 
-        double kP = 0.04; //tuned down to try to fix drift
+        double kP = 0.1; //tuned WAY UP to try to fix drift
         double kI = 0.0;
         double kD = 0.002;
 
@@ -256,14 +256,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             if (gamepad2.y) {
                 blocker.setPosition(0);
             } else if (gamepad2.b) {
-                blocker.setPosition(0.2);
+                blocker.setPosition(0.4);
             }
 
             frontLeft.setPower(-fl);
             frontRight.setPower(-fr);
             backLeft.setPower(bl);
             backRight.setPower(-br);
-            intake.setPower(intakePower);
+            intake.setPower(-intakePower);
 
             if (gamepad2.dpad_up) {
                 hood.setPosition(0.85);
@@ -275,9 +275,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
-            targetRPM = 1850;
+            targetRPM = 2200;
             if (shootShort) {
-                targetRPM = 2350;
+                targetRPM = 2200;
 
             } else if (shootLong) {
                 targetRPM = 3100;
@@ -304,10 +304,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 gamepad2.rumble(100);
             }
 
-            if (shootShort) {
-                blocker.setPosition(0.2);
-            } else if (shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-                blocker.setPosition(0.2);
+            if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) {
+                blocker.setPosition(0.4);
+            }
+            if (gamepad1.dpad_down) { //flywheel.isAtSpeed(2350, 200)
 
                 limelight.pipelineSwitch(0);
 
@@ -327,7 +327,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                     double turn = kP * error + kI * integral + kD * derivative;
 
                     // Deadband to prevent jitter
-                    if (Math.abs(error) < 0.5) {
+                    if (Math.abs(error) < 0.25) {
                         turn = 0;
                         integral = 0;   // reset integral when aligned
                     }
