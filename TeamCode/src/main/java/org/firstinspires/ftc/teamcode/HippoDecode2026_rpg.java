@@ -110,7 +110,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //intake.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BLOCKER
-        blocker =  hardwareMap.get(Servo.class, "blocker");
+        blocker = hardwareMap.get(Servo.class, "blocker");
 
         //HOOD
         hood = hardwareMap.get(Servo.class, "hood");
@@ -149,10 +149,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.addData("Version", "2026 V3");
         telemetry.addData("Caleb", "says hi");
-        telemetry.addData("Ethan","says hello");
-        telemetry.addData("Tyler","also says hi");
+        telemetry.addData("Ethan", "says hello");
+        telemetry.addData("Tyler", "also says hi");
         telemetry.addData("Asher", "loves Evelyn");
-        telemetry.addData("And","vice versa");
+        telemetry.addData("And", "vice versa");
         telemetry.addData("We're going", "to States!");
         telemetry.update();
 
@@ -163,7 +163,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double intakePower;
         double targetRPM;
 
-        double kP = 0.04; //tuned down to try to fix drift
+        double kP = 0.11; //tuned down to try to fix drift
         double kI = 0.0;
         double kD = 0.002;
 
@@ -171,7 +171,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double lastError = 0;
         double lastTime = timer.seconds();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.005, 0.0, 0.0001, 0.00042);
+        // rpg 2026-02-26 kp to 0.01 from 0.007
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
 
         // "power_multiplier" is a general value that allows us to control the global
         //   power level of the drive motors. Although currently useless, if we ever
@@ -200,10 +201,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             double br = (x + y);
             double fr = -(y - x);
             double bl = -(y - x);
-            
+
             //---------- GAMEPAD 1--------------
             //Mecanum drive code DON'T TOUCH THIS
-            if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
+            /*if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
                 double x_slow = -gamepad1.left_stick_x;
                 double y_slow = gamepad1.left_stick_y;
 
@@ -211,10 +212,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 br = (y + x) / 2;
                 fr = -(y - x) / 2;
                 bl = -(y - x) / 2;
-            }
+            }*/
 
             //This is the code for the fast spin
-            if (gamepad1.left_trigger != 0){
+            if (gamepad1.left_trigger != 0) {
                 fr = 1;
                 fl = -1;
                 br = -1;
@@ -227,7 +228,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             }
 
             //Slow spin
-            if (gamepad1.left_bumper){
+            if (gamepad1.left_bumper) {
                 fr = 0.3;
                 fl = -0.3;
                 br = -0.3;
@@ -263,10 +264,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             frontRight.setPower(-fr);
             backLeft.setPower(bl);
             backRight.setPower(-br);
-            intake.setPower(intakePower);
+            intake.setPower(-intakePower);
 
             if (gamepad2.dpad_up) {
-                hood.setPosition(0.85);
+                hood.setPosition(0.75);
             } else if (gamepad2.dpad_down) {
                 hood.setPosition(0.2);
             }
@@ -275,14 +276,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
-            targetRPM = 1850;
+            targetRPM = 2100;
             if (shootShort) {
-                targetRPM = 2350;
+                targetRPM = 2100;
 
             } else if (shootLong) {
-                targetRPM = 3100;
+                targetRPM = 3000;
 
-            }   else {
+            } else {
                 targetRPM = 1850;
             }
 
@@ -304,11 +305,13 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 gamepad2.rumble(100);
             }
 
-            if (shootShort) {
-                blocker.setPosition(0.2);
-            } else if (shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-                blocker.setPosition(0.2);
+            if (shootShort || shootLong && flywheel.isAtSpeed(3000, 60)) { //flywheel.isAtSpeed(2350, 200)
+                blocker.setPosition(0.3);
+            } else {
+                blocker.setPosition(0);
+            }
 
+            if (gamepad1.dpad_down) {
                 limelight.pipelineSwitch(0);
 
                 LLResult result = limelight.getLatestResult();
@@ -350,36 +353,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                     backLeft.setPower(rightPower);
                     backRight.setPower(-rightPower);
 
-                    telemetry.addData("Name", "%s",
-                            status.getName());
-                    telemetry.addData("LL", "Temp: %.1fC, CPU: %.1f%%, FPS: %d",
-                            status.getTemp(), status.getCpu(), (int) status.getFps());
-                    telemetry.addData("Pipeline", "Index: %d, Type: %s",
-                            status.getPipelineIndex(), status.getPipelineType());
-                    //telemetry.addData("max", max);
-                    telemetry.addData("last time", lastTime);
-                    telemetry.addData("current time", currentTime);
-                    telemetry.addData("dt", dt);
-                    telemetry.addData("turn", turn);
-                    telemetry.addData("result", "is valid");
-                    telemetry.addData("tx", tx);
-                    telemetry.addData("ta", result.getTa());
-                    //telemetry.addData("leftPower", leftPower);
-                    telemetry.addData("rightPower", rightPower);
-                    telemetry.update();
-                } else if (!result.isValid()) {
-                    frontRight.setPower(0);
-                    frontLeft.setPower(0);
-                    backLeft.setPower(0);
-                    backRight.setPower(0);
-                    telemetry.addData("result", "invalid");
-                    telemetry.update();
                 }
 
-            } else {
-                blocker.setPosition(0);
             }
         }
     }
-
 }
