@@ -245,7 +245,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
         //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
