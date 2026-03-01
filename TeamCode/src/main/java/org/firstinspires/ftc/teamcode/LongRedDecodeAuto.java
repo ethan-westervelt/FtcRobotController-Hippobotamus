@@ -307,10 +307,10 @@ public class LongRedDecodeAuto extends LinearOpMode {
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.2);
+                blocker.setPosition(0.7);
             }
             if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.32);
+                intake.setPower(0.5);
             }
         }
 
@@ -339,10 +339,10 @@ public class LongRedDecodeAuto extends LinearOpMode {
             dt = runTime.seconds();
             //3. open the gate to shoot
             if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.2);
+                blocker.setPosition(0.7);
             }
             if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.32);
+                intake.setPower(0.5);
             }
         }
         /*flywheel1.setPower(0.6);
@@ -357,6 +357,8 @@ public class LongRedDecodeAuto extends LinearOpMode {
         }*/
 
         //Get off the line!!
+        blocker.setPosition(0);
         driveForwardInches(12,0.6);
+
     }
 }
