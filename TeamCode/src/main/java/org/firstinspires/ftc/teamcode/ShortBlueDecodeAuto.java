@@ -180,6 +180,14 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
+    void rotate(double power) {
+
+        frontLeft.setPower(power);
+        frontRight.setPower(-power);
+        backLeft.setPower(power);
+        backRight.setPower(-power);
+    }
+
     // Positive degrees means clockwise
     void rotateDegrees(double degrees, double power) {
 
@@ -272,7 +280,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
         limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        //limelight.start(); // This tells Limelight to start looking!
+        limelight.start(); // This tells Limelight to start looking!
 
         //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         intake = hardwareMap.get(DcMotor.class, "intake");
@@ -299,17 +307,17 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.007, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 2400;
+        double targetRPM = 2200;
 
         while (runTime.seconds() < 1.5) {
             flywheel.setTargetRPM(targetRPM);
         }
 
-        hood.setPosition(0.2);
+        hood.setPosition(0.4);
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
         // 1. Flywheel spin up
@@ -319,7 +327,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         double dt = 0;
         //1. back up to shooting position
         flywheel1.setPower(0.65);
-
+        /*
         LLResult result = limelight.getLatestResult();
 
         if (result.isValid()) {
@@ -370,6 +378,8 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
             backLeft.setPower(0);
             backRight.setPower(0);
         }
+        */
+
 
 
         //flywheel.setTargetRPM(targetRPM);
@@ -377,13 +387,22 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         driveForwardInches(-38, 0.8);
         rotateDegrees(-10, 0.50);
 
+        LLResult result = limelight.getLatestResult();
+
         //2. spin up the flywheel
         while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
+
+            result = limelight.getLatestResult();
+            if (result.isValid()) {
+                double tx = result.getTx();
+                rotate(tx*0.3);
+            }
+
             //3. open the gate to shoot
             if (dt > 2.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 2.5) {
                 intake.setPower(0.6);
@@ -408,6 +427,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         driveForwardInches(-14,0.8);
         driveRightInches(16, 0.8);
         rotateDegrees(50,0.8);
+        driveForwardInches(-8,0.8);
 
         //5. shoot
         dt = 0;
@@ -417,9 +437,16 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
+
+            result = limelight.getLatestResult();
+            if (result.isValid()) {
+                double tx = result.getTx();
+                rotate(tx*0.3);
+            }
+
             //3. open the gate to shoot
             if (dt > 1.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
                 intake.setPower(0.65);
@@ -432,17 +459,17 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         // --------------------------------------------------------------------
         // 2nd spike
         //7. turn 45 degrees left
-        rotateDegrees(-50, 0.8);
+        rotateDegrees(-45, 0.8);
 
         //8. intake 2nd spike mark
         intake.setPower(1);
-        driveForwardInches(-6, 0.8);
+        //driveForwardInches(-6, 0.8);
         driveRightInches(-36,0.8);
-        driveForwardInches(36,0.6);
+        driveForwardInches(30,0.6);
         sleep(500);
 
         driveForwardInches(-8,0.8);
-        rotateDegrees(50, 0.8);
+        rotateDegrees(45, 0.8);
         flywheel1.setPower(0.65);
         driveRightInches(40,0.8);
         rotateDegrees(5,0.8);
@@ -451,7 +478,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
 
         dt = 0;
         t1 = runTime.seconds();
-
+        /*
         if (result.isValid()) {
             double tx = result.getTx();
             double currentTime = timer .seconds();
@@ -501,14 +528,23 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
             backRight.setPower(0);
         }
 
+         */
+
         // Shoot second "spike?"
         flywheel.setTargetRPM(targetRPM);
         while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
+
+            result = limelight.getLatestResult();
+            if (result.isValid()) {
+                double tx = result.getTx();
+                rotate(tx*0.5);
+            }
+
             //3. open the gate to shoot
             if (dt > 1.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
                 intake.setPower(0.65);
@@ -516,7 +552,8 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         }
 
         // GET OFF THE LINE!
-        driveRightInches(-12,1);
+        driveRightInches(-24,1);
+        blocker.setPosition(0);
 
     }
 }
