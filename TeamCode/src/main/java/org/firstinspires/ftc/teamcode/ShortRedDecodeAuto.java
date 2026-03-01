@@ -1,6 +1,8 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 //import com.qualcomm.robotcore.hardware.IMU;
@@ -12,6 +14,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+
+import java.util.List;
 //import org.json.JSONObject;
 //import org.json.JSONArray;
 //import org.firstinspires.ftc.teamcode.Limelight;
@@ -36,6 +40,8 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     private Servo blocker;
     private Servo hood;
     // private IMU imu;
+
+    private Limelight3A limelight;
     ElapsedTime timer = new ElapsedTime();
 
     public void encoderDrive(double speed,
@@ -211,6 +217,80 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
+    double tx, td, ts;
+    void setAlignmentMotorPower(LLResult result) {
+        if (result.isValid()) {
+
+            tx = 0.3*result.getTx() + 0.7*tx;
+            td = 0.3 * (Math.sqrt(result.getTa()) - 1.6) + 0.7*td;  // Including the target here.
+
+            // Use raw corners to get the skew value
+            List<List<Double>> corners = result.getFiducialResults().get(0).getTargetCorners();
+
+            // This is the left Y range divided the right Y range
+            // tl is top left, br is bottom right, etc.
+            double tl_y = corners.get(0).get(1);
+            double tr_y = corners.get(1).get(1);
+            double br_y = corners.get(2).get(1);
+            double bl_y = corners.get(3).get(1);
+
+            // Left height
+            double leftHeight = tl_y - bl_y;
+            double rightHeight = tr_y - br_y;
+
+            // This TS is the ratio of the right and left height of the trapezoid
+            // Using an EWMA because it seems to be noisy
+            ts = 0.3*100*(leftHeight / rightHeight  - 1) + 0.7*ts;
+
+        } else {
+
+            // If you don't find a value, reduce the values to zero
+            tx = 0.9*tx;
+            ts = 0.9*ts;
+            td = 0.9*td;
+        }
+
+        double forward = -0.7 * td;
+        double rotate = 0.06 * tx;
+        double strafe = 0.06 * ts;
+
+        double fl = forward + strafe + rotate;
+        double fr = forward - strafe - rotate;
+        double bl = forward - strafe + rotate;
+        double br = forward + strafe - rotate;
+
+        double maxAbs = 0.0;
+
+        if (Math.abs(fl) > maxAbs)
+            maxAbs = Math.abs(fl);
+
+        if (Math.abs(fr) > maxAbs)
+            maxAbs = Math.abs(fr);
+
+        if (Math.abs(bl) > maxAbs)
+            maxAbs = Math.abs(bl);
+
+        if (Math.abs(br) > maxAbs)
+            maxAbs = Math.abs(br);
+
+        // Dead band
+        if (maxAbs < 0.01) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        } else {
+            if (maxAbs < 1)
+                maxAbs = 1.0;
+
+            frontLeft.setPower(fl/maxAbs);
+            frontRight.setPower(fr/maxAbs);
+            backLeft.setPower(bl/maxAbs);
+            backRight.setPower(br/maxAbs);
+        }
+
+    }
+
     // Calculate the COUNTS_PER_INCH for your specific drive train.
 // Go to your motor vendor website to determine your motor's COUNTS_PER_MOTOR_REV
 // For external drive gearing, set DRIVE_GEAR_REDUCTION as needed.
@@ -279,6 +359,11 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(0);
+        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.start(); // This tells Limelight to start looking!
+
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
@@ -286,7 +371,6 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-
 
         double targetRPM = 2200; //was 2450
 
@@ -313,6 +397,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         //2. spin up the flywheel
         while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2.5) {
@@ -349,6 +434,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         flywheel.setTargetRPM(targetRPM);
         while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 1.5) {
@@ -389,6 +475,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         flywheel.setTargetRPM(targetRPM);
         while (dt < 4.5) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 1.5) {
