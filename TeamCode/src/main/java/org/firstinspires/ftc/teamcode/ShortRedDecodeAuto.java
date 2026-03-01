@@ -282,13 +282,13 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.007, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
 
 
-        double targetRPM = 2400; //was 2450
+        double targetRPM = 2200; //was 2450
 
         while (runTime.seconds() < 1.2) {
             flywheel.setTargetRPM(targetRPM);
@@ -298,7 +298,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         // 1. Flywheel spin up
         blocker.setPosition(0); // 0 means closed -- cannot fire
-        hood.setPosition(0.2);
+        hood.setPosition(0.4);
 
         double t1 = runTime.seconds();
         double dt = 0;
@@ -316,7 +316,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 2.6) {
                 intake.setPower(0.5);
@@ -352,7 +352,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 1.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
                 intake.setPower(0.45);
@@ -392,7 +392,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 1.5) {
-                blocker.setPosition(1);
+                blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
                 intake.setPower(0.45);
@@ -400,7 +400,8 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         }
 
         // GET OFF THE LINE!
-        driveRightInches(12,1);
+        blocker.setPosition(0);
+        driveRightInches(18,1);
 
     }
 }
