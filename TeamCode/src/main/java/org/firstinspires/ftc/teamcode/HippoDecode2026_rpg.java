@@ -1,6 +1,7 @@
 //DON'T MESS WITH THIS IT'S MAGIC
 package org.firstinspires.ftc.teamcode;
 
+
 // We need to import external code (code someone else wrote) to make the robot run
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
 
@@ -29,6 +30,9 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
 public class HippoDecode2026_rpg extends LinearOpMode {
 
+//import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+//import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+//import com.qualcomm.robotcore.hardware.DcMotor;
     public void stopDrive() {
         frontLeft.setPower(0);
         frontRight.setPower(0);
@@ -49,6 +53,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
     private DcMotor intake;
     private ElapsedTime timer = new ElapsedTime();
     private Limelight3A limelight;
+    private DcMotor stand;
 
     // This is an @Override annotation.
     // Since Hippo is a subclass of LinearOpMode, it 'inherits' the public functions
@@ -97,10 +102,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        //STAND
-        /*stand = hardwareMap.get(DcMotor.class, "stand");
-        stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);*/
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
 
         //IMU
         imu = hardwareMap.get(IMU.class, "imu");
@@ -108,6 +111,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //INTAKE
         intake = hardwareMap.get(DcMotor.class, "intake");
         //intake.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //STAND
+        stand = hardwareMap.get(DcMotor.class, "stand");
 
         //BLOCKER
         blocker = hardwareMap.get(Servo.class, "blocker");
@@ -151,7 +157,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         telemetry.addData("Caleb", "says hi");
         telemetry.addData("Ethan", "says hello");
         telemetry.addData("Tyler", "also says hi");
-        telemetry.addData("Asher", "loves Evelyn");
+        telemetry.addData("Asher", "loves Mr DuBois");
         telemetry.addData("And", "vice versa");
         telemetry.addData("We're going", "to States!");
         telemetry.update();
@@ -184,6 +190,16 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         //   true so long as the op mode is active/running, so as soon as we hit stop
         //   the loop will terminate.
         while (opModeIsActive()) {
+
+            // Take a stand
+            if (gamepad2.x | gamepad2.y) {
+                if (gamepad2.x)
+                    stand.setPower(1);
+                if (gamepad2.y)
+                    stand.setPower(-1);
+            } else {
+                stand.setPower(0);
+            }
 
             //intake power
             if (gamepad2.right_stick_y != 0) {
