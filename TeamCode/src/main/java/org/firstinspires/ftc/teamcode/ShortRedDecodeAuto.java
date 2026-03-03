@@ -40,7 +40,6 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     private Servo blocker;
     private Servo hood;
     // private IMU imu;
-
     private Limelight3A limelight;
     ElapsedTime timer = new ElapsedTime();
 
@@ -217,7 +216,11 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
-    double tx, td, ts;
+    // Globals used with the limelight alignment.
+    // They are globals because I use a low pass filter on the values.
+    double tx = 0; // alignment x loc
+    double td = 0; // alignment dist (sqrt(ta))
+    double ts = 0; // alignment skew
     void setAlignmentMotorPower(LLResult result) {
         if (result.isValid()) {
 

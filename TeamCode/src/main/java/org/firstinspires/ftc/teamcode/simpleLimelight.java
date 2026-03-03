@@ -26,14 +26,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 //import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import java.util.List;
-//import java.util.ArrayList;
-
-//import com.qualcomm.hardware.limelightvision.Limelight3A;
-//import com.qualcomm.hardware.limelightvision.LLResult;
-//import com.qualcomm.hardware.limelightvision.LLResultTypes.FiducialResult;
-//import org.firstinspires.ftc.robotcore.external.Telemetry;
-//import java.util.List;
-//import java.util.ArrayList;
 
 
 @Autonomous
