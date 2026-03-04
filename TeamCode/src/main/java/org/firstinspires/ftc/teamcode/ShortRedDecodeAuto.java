@@ -222,10 +222,15 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     double td = 0; // alignment dist (sqrt(ta))
     double ts = 0; // alignment skew
     void setAlignmentMotorPower(LLResult result) {
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
         if (result.isValid()) {
 
-            tx = 0.3*result.getTx() + 0.7*tx;
-            td = 0.3 * (Math.sqrt(result.getTa()) - 1.6) + 0.7*td;  // Including the target here.
+            tx = 0.2*result.getTx() + 0.8*tx;
+            td = 0.2 * (Math.sqrt(result.getTa()) - 1.6) + 0.8*td;  // Including the target here.
 
             // Use raw corners to get the skew value
             List<List<Double>> corners = result.getFiducialResults().get(0).getTargetCorners();
@@ -243,19 +248,26 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
             // This TS is the ratio of the right and left height of the trapezoid
             // Using an EWMA because it seems to be noisy
-            ts = 0.3*100*(leftHeight / rightHeight  - 1) + 0.7*ts;
+            ts = 0.2*100*(leftHeight / rightHeight  - 1) + 0.8*ts;
+
+            telemetry.addData("TS: ", ts);
+            telemetry.update();
 
         } else {
+
 
             // If you don't find a value, reduce the values to zero
             tx = 0.9*tx;
             ts = 0.9*ts;
             td = 0.9*td;
+
+            telemetry.addData("No TS: ", ts);
+            telemetry.update();
         }
 
-        double forward = -0.7 * td;
-        double rotate = 0.06 * tx;
-        double strafe = 0.06 * ts;
+        double forward = -0.5 * td;
+        double rotate = 0.03 * tx;
+        double strafe = 0.2 * ts;
 
         double fl = forward + strafe + rotate;
         double fr = forward - strafe - rotate;
@@ -365,7 +377,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
         limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start(); // This tells Limelight to start looking!
+        limelight.start();
 
         telemetry.addData("RPG", "says hello");
         telemetry.update();
@@ -385,7 +397,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         // 1. Flywheel spin up
         blocker.setPosition(0); // 0 means closed -- cannot fire
-        hood.setPosition(0.4);
+        hood.setPosition(0.3);
 
         double t1 = runTime.seconds();
         double dt = 0;
@@ -398,7 +410,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
-        while (dt < 5.5) {
+        while (dt < 50.5) {
             flywheel.setTargetRPM(targetRPM);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
@@ -407,7 +419,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 blocker.setPosition(0.7);
             }
             if (dt > 2.6) {
-                intake.setPower(0.5);
+                intake.setPower(1.0);
             }
         }
 
@@ -444,7 +456,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
-                intake.setPower(0.45);
+                intake.setPower(1.0);
             }
         }
         //6. reset shooting system for next move
@@ -485,7 +497,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 blocker.setPosition(0.7);
             }
             if (dt > 1.6) {
-                intake.setPower(0.45);
+                intake.setPower(1);
             }
         }
 
