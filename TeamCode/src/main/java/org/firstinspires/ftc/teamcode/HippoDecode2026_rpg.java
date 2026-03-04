@@ -169,7 +169,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double intakePower;
         double targetRPM;
 
-        double kP = 0.11; //tuned down to try to fix drift
+        double kP = 0.06; //tuned down to try to fix drift
         double kI = 0.0;
         double kD = 0.002;
 
@@ -288,45 +288,9 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 hood.setPosition(0.2);
             }
 
-
-            boolean shootShort = gamepad2.left_bumper;
-            boolean shootLong = gamepad2.right_bumper;
-
-            targetRPM = 2100;
-            if (shootShort) {
-                targetRPM = 2100;
-
-            } else if (shootLong) {
-                targetRPM = 3000;
-
-            } else {
-                targetRPM = 1850;
-            }
-
-            if (gamepad2.x) {
-                flywheel1.setPower(-1);
-            }
-
-            flywheel.setTargetRPM(targetRPM);
-
-            // Read velocity in ticks/sec
-
-            double currentTPS = flywheel1.getVelocity();   // ticks per second
-            double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
-            telemetry.addData("currentTPS", currentTPS);
-            telemetry.addData("targetTPS", targetTPS);
-            telemetry.update();
-
-            if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
-                gamepad2.rumble(100);
-            }
-
-            if (shootShort || shootLong && flywheel.isAtSpeed(3000, 60)) { //flywheel.isAtSpeed(2350, 200)
-                blocker.setPosition(0.3);
-            } else {
-                blocker.setPosition(0);
-            }
-
+            // Auto centering.  If you are shooting short and a big far
+            // then adjust the distance multiplier.
+            double distanceMult = 1.0;
             if (gamepad1.dpad_down) {
                 limelight.pipelineSwitch(0);
 
@@ -335,6 +299,10 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
                 if (result.isValid()) {
                     double tx = result.getTx();
+                    double ta = result.getTa();
+
+                    distanceMult = 20.4/(ta + 18);
+
                     double currentTime = timer.seconds();
                     double dt = currentTime - lastTime;//result.getTargetingLatency() / 1000.0; //replaced: currentTime - lastTime;
 
@@ -369,9 +337,53 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                     backLeft.setPower(rightPower);
                     backRight.setPower(-rightPower);
 
+                    telemetry.addData("ta: ", ta);
+                    telemetry.addData("hood: ", hood.getPosition());
+                    telemetry.update();
                 }
 
             }
+
+
+            boolean shootShort = gamepad2.left_bumper;
+            boolean shootLong = gamepad2.right_bumper;
+
+            targetRPM = 2100;
+            if (shootShort) {
+                targetRPM = 2100 * distanceMult;
+
+            } else if (shootLong) {
+                targetRPM = 3000;
+
+            } else {
+                targetRPM = 1850;
+            }
+
+            if (gamepad2.x) {
+                flywheel1.setPower(-1);
+            }
+
+            flywheel.setTargetRPM(targetRPM);
+
+            // Read velocity in ticks/sec
+
+            double currentTPS = flywheel1.getVelocity();   // ticks per second
+            double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
+            //telemetry.addData("currentTPS", currentTPS);
+            //telemetry.addData("targetTPS", targetTPS);
+            //telemetry.update();
+
+            if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
+                gamepad2.rumble(100);
+            }
+
+            if (shootShort || shootLong && flywheel.isAtSpeed(3000, 60)) { //flywheel.isAtSpeed(2350, 200)
+                blocker.setPosition(0.3);
+            } else {
+                blocker.setPosition(0);
+            }
+
+
         }
     }
 }
