@@ -114,6 +114,8 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
         //STAND
         stand = hardwareMap.get(DcMotor.class, "stand");
+        stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //BLOCKER
         blocker = hardwareMap.get(Servo.class, "blocker");
@@ -178,7 +180,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double lastTime = timer.seconds();
 
         // rpg 2026-02-26 kp to 0.01 from 0.007
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.015, 0.0, 0.0001, 0.00042);
 
         // "power_multiplier" is a general value that allows us to control the global
         //   power level of the drive motors. Although currently useless, if we ever
@@ -193,10 +195,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
             // Take a stand
             if (gamepad2.x | gamepad2.y) {
-                if (gamepad2.x)
+                if (gamepad2.x) {
+                    stand.setTargetPosition(2500);
+                    stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                     stand.setPower(1);
-                if (gamepad2.y)
-                    stand.setPower(-1);
+                } else if (gamepad2.y)
+                    stand.setTargetPosition(0);
+                    stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    stand.setPower(1);
             } else {
                 stand.setPower(0);
             }

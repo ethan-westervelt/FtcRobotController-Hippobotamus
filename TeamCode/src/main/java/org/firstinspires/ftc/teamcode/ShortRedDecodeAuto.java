@@ -382,12 +382,12 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.015, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
 
-        double targetRPM = 2200; //was 2450
+        double targetRPM = 2350; //was 2450
 
         while (runTime.seconds() < 1.2) {
             flywheel.setTargetRPM(targetRPM);
@@ -410,13 +410,13 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
-        while (dt < 50.5) {
+        while (dt < 4) {
             flywheel.setTargetRPM(targetRPM);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2.5) {
-                blocker.setPosition(0.7);
+                blocker.setPosition(0.2);
             }
             if (dt > 2.6) {
                 intake.setPower(1.0);
@@ -424,22 +424,17 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         }
 
         blocker.setPosition(0);
-        flywheel1.setPower(0);
+        //flywheel1.setPower(0);
         //3. turn 45 degrees left
-        rotateDegrees(40, 0.50);
-
-        // blocker.setPosition(0);
+        rotateDegrees(35, 0.50);
 
         // ----------------------------------------------------------------
+
         //4. intake 1st spike mark
-        intake.setPower(1);
+        driveRightInches(18, 0.75);
+        driveForwardInches(40, 0.6);
         sleep(500);
-        driveRightInches(15, 0.75);
-        driveForwardInches(32, 0.6);
-        sleep(500);
-        flywheel1.setPower(0.65);
-        driveForwardInches(-20,0.75);
-        driveRightInches(-16, 0.75);
+        driveForwardInches(-40,0.75);
         rotateDegrees(-45,0.50);
 
         //5. shoot
@@ -447,63 +442,55 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         t1 = runTime.seconds();
 
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 4.5) {
+        while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(0.7);
+            if (dt > 3.5) {
+                blocker.setPosition(0.2);
             }
-            if (dt > 1.6) {
+            if (dt > 3.6) {
                 intake.setPower(1.0);
             }
         }
         //6. reset shooting system for next move
-        flywheel1.setPower(0);
         blocker.setPosition(0);
 
         // 2nd spike
         //7. turn 45 degrees left
-        rotateDegrees(50, 0.50);
+        rotateDegrees(33, 0.50);
 
         //8. intake 2nd spike mark
-        intake.setPower(1);
-        rotateDegrees(-5,0.75);
-        driveRightInches(30,0.75);
-        rotateDegrees(5,0.75);
-        driveForwardInches(20,0.6);
+        //intake.setPower(1);
+        driveRightInches(46,0.75);
+        driveForwardInches(40,0.6);
         sleep(500);
 
-        driveForwardInches(-12,0.75);
-        rotateDegrees(-50, 0.50);
-        flywheel1.setPower(0.65);
-        driveRightInches(-36,0.75);
-        rotateDegrees(-8,0.50);
-        driveForwardInches(7,0.75);
+        driveForwardInches(-40,0.75);
+        rotateDegrees(-60, 0.50);
 
         dt = 0;
         t1 = runTime.seconds();
 
-        rotateDegrees(10,0.75);
         // Shoot second "spike?"
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 4.5) {
+        while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(0.7);
+            if (dt > 3.5) {
+                blocker.setPosition(0.2);
             }
-            if (dt > 1.6) {
+            if (dt > 3.6) {
                 intake.setPower(1);
             }
         }
 
         // GET OFF THE LINE!
         blocker.setPosition(0);
-        driveRightInches(18,1);
+        driveRightInches(-6,1);
 
     }
 }

@@ -14,6 +14,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+
+import java.util.List;
 //import org.json.JSONObject;
 //import org.json.JSONArray;
 //import org.firstinspires.ftc.teamcode.Limelight;
@@ -37,8 +39,8 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
-    private Limelight3A limelight;
     // private IMU imu;
+    private Limelight3A limelight;
     ElapsedTime timer = new ElapsedTime();
 
     public void encoderDrive(double speed,
@@ -180,14 +182,6 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
-    void rotate(double power) {
-
-        frontLeft.setPower(power);
-        frontRight.setPower(-power);
-        backLeft.setPower(power);
-        backRight.setPower(-power);
-    }
-
     // Positive degrees means clockwise
     void rotateDegrees(double degrees, double power) {
 
@@ -222,6 +216,96 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
+    // Globals used with the limelight alignment.
+    // They are globals because I use a low pass filter on the values.
+    double tx = 0; // alignment x loc
+    double td = 0; // alignment dist (sqrt(ta))
+    double ts = 0; // alignment skew
+    void setAlignmentMotorPower(LLResult result) {
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        if (result.isValid()) {
+
+            tx = 0.2*result.getTx() + 0.8*tx;
+            td = 0.2 * (Math.sqrt(result.getTa()) - 1.6) + 0.8*td;  // Including the target here.
+
+            // Use raw corners to get the skew value
+            List<List<Double>> corners = result.getFiducialResults().get(0).getTargetCorners();
+
+            // This is the left Y range divided the right Y range
+            // tl is top left, br is bottom right, etc.
+            double tl_y = corners.get(0).get(1);
+            double tr_y = corners.get(1).get(1);
+            double br_y = corners.get(2).get(1);
+            double bl_y = corners.get(3).get(1);
+
+            // Left height
+            double leftHeight = tl_y - bl_y;
+            double rightHeight = tr_y - br_y;
+
+            // This TS is the ratio of the right and left height of the trapezoid
+            // Using an EWMA because it seems to be noisy
+            ts = 0.2*100*(leftHeight / rightHeight  - 1) + 0.8*ts;
+
+            telemetry.addData("TS: ", ts);
+            telemetry.update();
+
+        } else {
+
+
+            // If you don't find a value, reduce the values to zero
+            tx = 0.9*tx;
+            ts = 0.9*ts;
+            td = 0.9*td;
+
+            telemetry.addData("No TS: ", ts);
+            telemetry.update();
+        }
+
+        double forward = -0.5 * td;
+        double rotate = 0.03 * tx;
+        double strafe = 0.2 * ts;
+
+        double fl = forward + strafe + rotate;
+        double fr = forward - strafe - rotate;
+        double bl = forward - strafe + rotate;
+        double br = forward + strafe - rotate;
+
+        double maxAbs = 0.0;
+
+        if (Math.abs(fl) > maxAbs)
+            maxAbs = Math.abs(fl);
+
+        if (Math.abs(fr) > maxAbs)
+            maxAbs = Math.abs(fr);
+
+        if (Math.abs(bl) > maxAbs)
+            maxAbs = Math.abs(bl);
+
+        if (Math.abs(br) > maxAbs)
+            maxAbs = Math.abs(br);
+
+        // Dead band
+        if (maxAbs < 0.01) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        } else {
+            if (maxAbs < 1)
+                maxAbs = 1.0;
+
+            frontLeft.setPower(fl/maxAbs);
+            frontRight.setPower(fr/maxAbs);
+            backLeft.setPower(bl/maxAbs);
+            backRight.setPower(br/maxAbs);
+        }
+
+    }
+
     // Calculate the COUNTS_PER_INCH for your specific drive train.
 // Go to your motor vendor website to determine your motor's COUNTS_PER_MOTOR_REV
 // For external drive gearing, set DRIVE_GEAR_REDUCTION as needed.
@@ -244,13 +328,6 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     double flywheelSpeed;
     double intakeSpeed = 0.2;
     boolean running = false;
-    double kP = 0.03;
-    double kI = 0.0;
-    double kD = 0.002;
-
-    double integral = 0;
-    double lastError = 0;
-    double lastTime = timer.seconds();
 
     @Override
     public void runOpMode() {
@@ -276,13 +353,6 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        //LIMELIGHT
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start(); // This tells Limelight to start looking!
-
-        //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         intake = hardwareMap.get(DcMotor.class, "intake");
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -304,256 +374,123 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(0);
+        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.start();
+
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.01, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.015, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 2200;
 
-        while (runTime.seconds() < 1.5) {
+        double targetRPM = 2350; //was 2450
+
+        while (runTime.seconds() < 1.2) {
             flywheel.setTargetRPM(targetRPM);
         }
 
-        hood.setPosition(0.4);
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
         // 1. Flywheel spin up
         blocker.setPosition(0); // 0 means closed -- cannot fire
+        hood.setPosition(0.3);
 
         double t1 = runTime.seconds();
         double dt = 0;
         //1. back up to shooting position
-        flywheel1.setPower(0.65);
-        /*
-        LLResult result = limelight.getLatestResult();
-
-        if (result.isValid()) {
-            double tx = result.getTx();
-            double currentTime = timer .seconds();
-            double t = currentTime - lastTime;
-
-            // PID terms
-            double error = tx;
-            integral += error * t;
-            double derivative = (error - lastError) / t;
-
-            double turn = kP * error + kI * integral + kD * derivative;
-
-            // Deadband to prevent jitter
-            if (Math.abs(error) < 0.25) {
-                turn = 0;
-                integral = 0;   // reset integral when aligned
-            }
-
-            // Normalize wheel power
-            double leftPower = -turn;
-            double rightPower = turn;
-
-            double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
-            if (max > 1.0) {
-                leftPower /= max;
-                rightPower /= max;
-            }
-
-            // Apply to motors
-            frontLeft.setPower(leftPower);
-            backLeft.setPower(-leftPower);
-            frontRight.setPower(rightPower);
-            backRight.setPower(-rightPower);
-
-            // Save state
-            lastError = error;
-            lastTime = currentTime;
-
-            telemetry.addData("tx", tx);
-            telemetry.addData("turn", turn);
-            telemetry.update();
-
-        } else {
-            frontLeft.setPower(0);
-            frontRight.setPower(0);
-            backLeft.setPower(0);
-            backRight.setPower(0);
-        }
-        */
-
-
+        flywheel.setTargetRPM(targetRPM);
 
         //flywheel.setTargetRPM(targetRPM);
-        intake.setPower(0.2);
-        driveForwardInches(-38, 0.8);
-        rotateDegrees(-10, 0.50);
-
-        LLResult result = limelight.getLatestResult();
+        //intake.setPower(0.6);
+        driveForwardInches(-38, 0.75);
+        // rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
-        while (dt < 5.5) {
+        while (dt < 4) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
-
-            result = limelight.getLatestResult();
-            if (result.isValid()) {
-                double tx = result.getTx();
-                rotate(tx*0.3);
-            }
-
             //3. open the gate to shoot
             if (dt > 2.5) {
-                blocker.setPosition(0.7);
+                blocker.setPosition(0.2);
             }
-            if (dt > 2.5) {
-                intake.setPower(0.6);
+            if (dt > 2.6) {
+                intake.setPower(1.0);
             }
         }
 
-        //blocker.setPosition(0);
-        flywheel1.setPower(0);
-        //3. turn 45 degrees left
-        rotateDegrees(-44, 0.50);
-
         blocker.setPosition(0);
+        //flywheel1.setPower(0);
+        //3. turn 45 degrees left
+        rotateDegrees(-35, 0.50);
 
         // ----------------------------------------------------------------
+
         //4. intake 1st spike mark
-        intake.setPower(1);
+        driveRightInches(-18, 0.75);
+        driveForwardInches(34, 0.6);
         sleep(500);
-        driveRightInches(-14, 0.8);
-        driveForwardInches(30, 0.6);
-        sleep(500);
-        flywheel1.setPower(0.65);
-        driveForwardInches(-14,0.8);
-        driveRightInches(16, 0.8);
-        rotateDegrees(50,0.8);
-        driveForwardInches(-8,0.8);
+        driveForwardInches(-34,0.75);
+        rotateDegrees(45,0.50);
 
         //5. shoot
         dt = 0;
         t1 = runTime.seconds();
 
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 4.5) {
+        while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
-
-            result = limelight.getLatestResult();
-            if (result.isValid()) {
-                double tx = result.getTx();
-                rotate(tx*0.3);
-            }
-
             //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(0.7);
+            if (dt > 3.5) {
+                blocker.setPosition(0.2);
             }
-            if (dt > 1.6) {
-                intake.setPower(0.65);
+            if (dt > 3.6) {
+                intake.setPower(1.0);
             }
         }
-        //6. reset for next move
-        flywheel1.setPower(0);
+        //6. reset shooting system for next move
         blocker.setPosition(0);
 
-        // --------------------------------------------------------------------
         // 2nd spike
         //7. turn 45 degrees left
-        rotateDegrees(-45, 0.8);
+        rotateDegrees(-30, 0.50);
 
         //8. intake 2nd spike mark
-        intake.setPower(1);
-        //driveForwardInches(-6, 0.8);
-        driveRightInches(-36,0.8);
+        //intake.setPower(1);
+        driveRightInches(-46,0.75);
         driveForwardInches(30,0.6);
         sleep(500);
 
-        driveForwardInches(-8,0.8);
-        rotateDegrees(45, 0.8);
-        flywheel1.setPower(0.65);
-        driveRightInches(40,0.8);
-        rotateDegrees(5,0.8);
-        //driveForwardInches(7,0.83);
-
+        driveForwardInches(-30,0.75);
+        rotateDegrees(60, 0.50);
 
         dt = 0;
         t1 = runTime.seconds();
-        /*
-        if (result.isValid()) {
-            double tx = result.getTx();
-            double currentTime = timer .seconds();
-            double t = currentTime - lastTime;
-
-            // PID terms
-            double error = tx;
-            integral += error * t;
-            double derivative = (error - lastError) / t;
-
-            double turn = kP * error + kI * integral + kD * derivative;
-
-            // Deadband to prevent jitter
-            if (Math.abs(error) < 0.25) {
-                turn = 0;
-                integral = 0;   // reset integral when aligned
-            }
-
-            // Normalize wheel power
-            double leftPower = -turn;
-            double rightPower = turn;
-
-            double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
-            if (max > 1.0) {
-                leftPower /= max;
-                rightPower /= max;
-            }
-
-            // Apply to motors
-            frontLeft.setPower(leftPower);
-            backLeft.setPower(-leftPower);
-            frontRight.setPower(rightPower);
-            backRight.setPower(-rightPower);
-
-            // Save state
-            lastError = error;
-            lastTime = currentTime;
-
-            telemetry.addData("tx", tx);
-            telemetry.addData("turn", turn);
-            telemetry.update();
-
-        } else {
-            frontLeft.setPower(0);
-            frontRight.setPower(0);
-            backLeft.setPower(0);
-            backRight.setPower(0);
-        }
-
-         */
 
         // Shoot second "spike?"
         flywheel.setTargetRPM(targetRPM);
-        while (dt < 4.5) {
+        while (dt < 5.5) {
             flywheel.setTargetRPM(targetRPM);
+            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
-
-            result = limelight.getLatestResult();
-            if (result.isValid()) {
-                double tx = result.getTx();
-                rotate(tx*0.5);
-            }
-
             //3. open the gate to shoot
-            if (dt > 1.5) {
-                blocker.setPosition(0.7);
+            if (dt > 3.5) {
+                blocker.setPosition(0.2);
             }
-            if (dt > 1.6) {
-                intake.setPower(0.65);
+            if (dt > 3.6) {
+                intake.setPower(1);
             }
         }
 
         // GET OFF THE LINE!
-        driveRightInches(-24,1);
         blocker.setPosition(0);
+        driveRightInches(6,1);
 
     }
 }
