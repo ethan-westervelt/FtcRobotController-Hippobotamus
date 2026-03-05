@@ -432,9 +432,9 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
 
         //4. intake 1st spike mark
         driveRightInches(-18, 0.75);
-        driveForwardInches(34, 0.6);
+        driveForwardInches(40, 0.6);
         sleep(500);
-        driveForwardInches(-34,0.75);
+        driveForwardInches(-40,0.75);
         rotateDegrees(45,0.50);
 
         //5. shoot
@@ -459,15 +459,15 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
 
         // 2nd spike
         //7. turn 45 degrees left
-        rotateDegrees(-30, 0.50);
+        rotateDegrees(-35, 0.50);
 
         //8. intake 2nd spike mark
         //intake.setPower(1);
         driveRightInches(-46,0.75);
-        driveForwardInches(30,0.6);
+        driveForwardInches(40,0.6);
         sleep(500);
 
-        driveForwardInches(-30,0.75);
+        driveForwardInches(-40,0.75);
         rotateDegrees(60, 0.50);
 
         dt = 0;

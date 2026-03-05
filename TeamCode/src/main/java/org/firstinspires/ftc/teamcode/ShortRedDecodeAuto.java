@@ -464,10 +464,10 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         //8. intake 2nd spike mark
         //intake.setPower(1);
         driveRightInches(46,0.75);
-        driveForwardInches(40,0.6);
+        driveForwardInches(46,0.6);
         sleep(500);
 
-        driveForwardInches(-40,0.75);
+        driveForwardInches(-46,0.75);
         rotateDegrees(-60, 0.50);
 
         dt = 0;
