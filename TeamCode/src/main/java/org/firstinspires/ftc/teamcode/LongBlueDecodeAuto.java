@@ -15,12 +15,13 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 //import org.json.JSONObject;
 //import org.json.JSONArray;
 //import org.firstinspires.ftc.teamcode.Limelight;
-//import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResult;
 //import com.qualcomm.hardware.limelightvision.LLResultTypes;
 //import com.qualcomm.hardware.limelightvision.LLStatus;
-//import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 //import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
 
 
 @Autonomous
@@ -36,6 +37,8 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     private Servo blocker;
     private Servo hood;
     // private IMU imu;
+    private Limelight3A limelight;
+
     ElapsedTime timer = new ElapsedTime();
 
     public void encoderDrive(double speed,
@@ -211,6 +214,36 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
+    double tx = 0; // alignment x loc
+    void setAlignmentRotatePower(LLResult result, double targetOffset) {
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        if (result.isValid()) {
+            tx = 0.3*result.getTx() + 0.7*tx;
+        } else {
+            tx = 0.9*tx;
+        }
+
+        double rotate = 0.03 * (tx - targetOffset);
+
+        // Dead band
+        if (rotate < 0.01) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        } else {
+            frontLeft.setPower(rotate);
+            frontRight.setPower(-rotate);
+            backLeft.setPower(rotate);
+            backRight.setPower(-rotate);
+        }
+
+    }
+
     // Calculate the COUNTS_PER_INCH for your specific drive train.
 // Go to your motor vendor website to determine your motor's COUNTS_PER_MOTOR_REV
 // For external drive gearing, set DRIVE_GEAR_REDUCTION as needed.
@@ -279,6 +312,11 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(0);
+        limelight.setPollRateHz(50); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.start();
+
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
@@ -293,19 +331,29 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         double dt = 0;
         double t1 = runTime.seconds();
 
-        while (dt < 10) {
-            telemetry.addData("speed", flywheel1.getVelocity());
+        sleep(100);
+
+        telemetry.addData("Ta", limelight.getLatestResult().getTa());
+        telemetry.update();
+
+        while (dt < 6) {
+
+            double tx_temp = limelight.getLatestResult().getTx();
+            double ta_temp = limelight.getLatestResult().getTa();
+
+            telemetry.addData("Tx", tx_temp);
+            telemetry.addData("Ta", ta_temp);
             telemetry.update();
-            if (flywheel1.getVelocity() < 1450) {
-                flywheel.setTargetRPM(targetRPM);
-            }
+
+            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (flywheel1.getVelocity() > 1400) {
                 blocker.setPosition(0.7);
             }
             if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.5);
+                intake.setPower(1.0);
             }
         }
 
@@ -315,35 +363,39 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         driveForwardInches(15,0.6);
         rotateDegrees(-70, 0.5);
         intake.setPower(1);
-        driveRightInches(5,0.5);
-        driveForwardInches(34, 0.5);
+        driveRightInches(8,0.5);
+        driveForwardInches(40, 0.5);
         sleep(500);
-        driveRightInches(-5,0.5);
-        driveForwardInches(-34, 0.5);
+        driveRightInches(-8,0.5);
+        driveForwardInches(-40, 0.5);
         rotateDegrees(70, 0.5);
         intake.setPower(0);
         driveForwardInches(-12,0.6);
 
-        //dt = 0;
-
         runTime.reset();
 
-        while (runTime.seconds() > 0 && runTime.seconds() < 6) {
-            if (flywheel1.getVelocity() < 1450) {
-                flywheel.setTargetRPM(targetRPM);
-            }
+        while (runTime.seconds() > 0 && runTime.seconds() < 7) {
+            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds();
+
+            // give us a few seconds to find the lime light
+            if (dt < 3) {
+                continue;
+            }
+
             //3. open the gate to shoot
-            if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.7);
-            }
-            if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(0.5);
-            }
+            //if (flywheel1.getVelocity() > 1400) {
+            blocker.setPosition(0.7);
+            intake.setPower(1.0);
+            //}
         }
+
+        flywheel1.setPower(0);
 
         //Get off the line!!
         blocker.setPosition(0);
         driveForwardInches(12,0.6);
+
     }
 }
