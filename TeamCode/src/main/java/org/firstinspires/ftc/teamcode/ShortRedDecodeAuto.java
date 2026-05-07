@@ -389,7 +389,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         double targetRPM = 2350; //was 2450
 
-        while (runTime.seconds() < 1.2) {
+        while (runTime.seconds() < 0.7) {
             flywheel.setTargetRPM(targetRPM);
         }
 
@@ -415,10 +415,10 @@ public class ShortRedDecodeAuto extends LinearOpMode {
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 2.5) {
+            if (dt > 2) {
                 blocker.setPosition(0.2);
             }
-            if (dt > 2.6) {
+            if (dt > 2.1) {
                 intake.setPower(1.0);
             }
         }
@@ -463,11 +463,11 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         //8. intake 2nd spike mark
         //intake.setPower(1);
-        driveRightInches(46,0.75);
+        driveRightInches(48,0.75);
         driveForwardInches(46,0.6);
         sleep(500);
 
-        driveForwardInches(-46,0.75);
+        driveForwardInches(-36,0.75);
         rotateDegrees(-60, 0.50);
 
         dt = 0;

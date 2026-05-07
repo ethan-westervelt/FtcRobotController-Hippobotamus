@@ -180,7 +180,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
         double lastTime = timer.seconds();
 
         // rpg 2026-02-26 kp to 0.01 from 0.007
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.015, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.016, 0.0, 0.0001, 0.00042);
 
         // "power_multiplier" is a general value that allows us to control the global
         //   power level of the drive motors. Although currently useless, if we ever
@@ -196,13 +196,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
             // Take a stand
             if (gamepad2.x | gamepad2.y) {
                 if (gamepad2.x) {
-                    stand.setTargetPosition(2500);
+                    stand.setTargetPosition(500);
                     stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                     stand.setPower(1);
-                } else if (gamepad2.y)
+                } else if (gamepad2.y) {
                     stand.setTargetPosition(0);
                     stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                     stand.setPower(1);
+                }
             } else {
                 stand.setPower(0);
             }
@@ -262,18 +263,6 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 br = 0.3;
             }
 
-            /*if (gamepad1.dpad_up) {
-                stand.setTargetPosition(100);
-                stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                stand.setPower(1);
-            } else if (gamepad1.dpad_down) {
-                stand.setTargetPosition(0);
-                stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                stand.setPower(1);
-            }*/
-
-            //under construction...
-
 
             //----------GAMEPAD 2------------
             if (gamepad2.y) {
@@ -325,13 +314,11 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                         integral = 0;   // reset integral when aligned
                     }
 
-                    //double leftPower = turn;
                     double rightPower = turn;
 
                     double max = Math.abs(rightPower);//Math.max(Math.abs(leftPower), Math.abs(rightPower))
 
                     if (max > 1.0) {
-                        //leftPower /= max;
                         rightPower /= max;
                     }
 
@@ -359,7 +346,7 @@ public class HippoDecode2026_rpg extends LinearOpMode {
                 targetRPM = 2100 * distanceMult;
 
             } else if (shootLong) {
-                targetRPM = 3000;
+                targetRPM = 3100;
 
             } else {
                 targetRPM = 1850;
@@ -373,17 +360,14 @@ public class HippoDecode2026_rpg extends LinearOpMode {
 
             // Read velocity in ticks/sec
 
-            double currentTPS = flywheel1.getVelocity();   // ticks per second
-            double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
-            //telemetry.addData("currentTPS", currentTPS);
-            //telemetry.addData("targetTPS", targetTPS);
-            //telemetry.update();
+            double currentTPS = flywheel1.getVelocity();
+            double targetTPS = (targetRPM / 60.0) * 28.0;
 
             if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
                 gamepad2.rumble(100);
             }
 
-            if (shootShort || shootLong && flywheel.isAtSpeed(3000, 60)) { //flywheel.isAtSpeed(2350, 200)
+            if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
                 blocker.setPosition(0.3);
             } else {
                 blocker.setPosition(0);

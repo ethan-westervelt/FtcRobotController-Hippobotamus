@@ -345,7 +345,7 @@ public class LongRedDecodeAuto extends LinearOpMode {
             telemetry.addData("Ta", ta_temp);
             telemetry.update();
 
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
@@ -375,7 +375,7 @@ public class LongRedDecodeAuto extends LinearOpMode {
         runTime.reset();
 
         while (runTime.seconds() > 0 && runTime.seconds() < 7) {
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds();
 
