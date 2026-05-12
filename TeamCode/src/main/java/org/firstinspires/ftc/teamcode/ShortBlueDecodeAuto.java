@@ -2,7 +2,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -47,10 +46,10 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
                              int blInches, int brInches,
                              double timeoutS) {
 
-        int newFL = frontLeft.getCurrentPosition() + (int) (flInches * COUNTS_PER_INCH);
-        int newFR = frontRight.getCurrentPosition() + (int) (frInches * COUNTS_PER_INCH);
-        int newBL = backLeft.getCurrentPosition() + (int) (blInches * COUNTS_PER_INCH);
-        int newBR = backRight.getCurrentPosition() + (int) (brInches * COUNTS_PER_INCH);
+        int newFL = frontLeft.getCurrentPosition()  + (int)(flInches * COUNTS_PER_INCH);
+        int newFR = frontRight.getCurrentPosition() + (int)(frInches * COUNTS_PER_INCH);
+        int newBL = backLeft.getCurrentPosition()   + (int)(blInches * COUNTS_PER_INCH);
+        int newBR = backRight.getCurrentPosition()  + (int)(brInches * COUNTS_PER_INCH);
 
         frontLeft.setTargetPosition(newFL);
         frontRight.setTargetPosition(newFR);
@@ -73,7 +72,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         while (opModeIsActive() &&
                 timer.seconds() < timeoutS &&
                 (frontLeft.isBusy() || frontRight.isBusy() ||
-                        backLeft.isBusy() || backRight.isBusy())) {
+                        backLeft.isBusy()  || backRight.isBusy())) {
             // optional telemetry
             telemetry.addData("fl", "%d %d %f", newFL, frontLeft.getCurrentPosition(), Math.abs(speed));
             telemetry.update();
@@ -93,6 +92,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     }
 
 
+
     public void stopDrive() {
         frontLeft.setPower(0);
         frontRight.setPower(0);
@@ -110,7 +110,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     }
 
     void driveForwardInches(double inches, double power) {
-        int ticks = (int) (inches * COUNTS_PER_INCH);
+        int ticks = (int)(inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -141,7 +141,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     }
 
     void driveRightInches(double inches, double power) {
-        int ticks = (int) (inches * COUNTS_PER_INCH);
+        int ticks = (int)(inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -153,10 +153,10 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         double coefBL = 1.0;
         double coefBR = 1.0;
 
-        frontLeft.setTargetPosition((int) (ticks * coefFL));
-        frontRight.setTargetPosition((int) (-ticks * coefFR));
-        backLeft.setTargetPosition((int) (-ticks * coefBL));
-        backRight.setTargetPosition((int) (ticks * coefBR));
+        frontLeft.setTargetPosition((int)(ticks * coefFL));
+        frontRight.setTargetPosition((int)(-ticks * coefFR));
+        backLeft.setTargetPosition((int)(-ticks * coefBL));
+        backRight.setTargetPosition((int)(ticks * coefBR));
 
         frontLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         frontRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -184,7 +184,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
     void rotateDegrees(double degrees, double power) {
 
         double inches = degrees / 4.8;
-        int ticks = (int) (inches * COUNTS_PER_INCH);
+        int ticks = (int)(inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -221,17 +221,17 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
 // This is gearing DOWN for less speed and more torque.
 // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
 //Need to do this, cpmr = 29?
-    static final double COUNTS_PER_MOTOR_REV = 28;    // rev motors
-    static final double DRIVE_GEAR_REDUCTION = 20;     // 20:1
-    static final double WHEEL_DIAMETER_INCHES = 4.0;     // For figuring circumference
+    static final double     COUNTS_PER_MOTOR_REV    = 28;    // rev motors
+    static final double     DRIVE_GEAR_REDUCTION    = 20;     // 20:1
+    static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
 
-    static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
+    static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * 3.1415);
     //Change these values to adjust speeds
-    static final double DRIVE_SPEED = 0.8;
-    static final double TURN_SPEED = 0.8;
-    static final double LIFT_SPEED = 0.2;
-    static final double BACK_SPEED = 0.5;
+    static final double     DRIVE_SPEED             = 0.8;
+    static final double     TURN_SPEED              = 0.8;
+    static final double     LIFT_SPEED              = 0.2;
+    static final double     BACK_SPEED              = 0.5;
 
     double flywheelSpeed;
     double intakeSpeed = 0.2;
@@ -256,7 +256,7 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
         //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
@@ -303,9 +303,9 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 2200;
+        double targetRPM = 2400;
 
-        while (runTime.seconds() < 1.25) {
+        while (runTime.seconds() < 1.5) {
             flywheel.setTargetRPM(targetRPM);
         }
 
@@ -320,6 +320,56 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         //1. back up to shooting position
         flywheel1.setPower(0.65);
 
+        LLResult result = limelight.getLatestResult();
+
+        if (result.isValid()) {
+            double tx = result.getTx();
+            double currentTime = timer .seconds();
+            double t = currentTime - lastTime;
+
+            // PID terms
+            double error = tx;
+            integral += error * t;
+            double derivative = (error - lastError) / t;
+
+            double turn = kP * error + kI * integral + kD * derivative;
+
+            // Deadband to prevent jitter
+            if (Math.abs(error) < 0.25) {
+                turn = 0;
+                integral = 0;   // reset integral when aligned
+            }
+
+            // Normalize wheel power
+            double leftPower = -turn;
+            double rightPower = turn;
+
+            double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+            if (max > 1.0) {
+                leftPower /= max;
+                rightPower /= max;
+            }
+
+            // Apply to motors
+            frontLeft.setPower(leftPower);
+            backLeft.setPower(-leftPower);
+            frontRight.setPower(rightPower);
+            backRight.setPower(-rightPower);
+
+            // Save state
+            lastError = error;
+            lastTime = currentTime;
+
+            telemetry.addData("tx", tx);
+            telemetry.addData("turn", turn);
+            telemetry.update();
+
+        } else {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        }
 
 
         //flywheel.setTargetRPM(targetRPM);
@@ -333,96 +383,140 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2.5) {
-                    blocker.setPosition(0.4);
-                }
-                if (dt > 2.6) {
-                    intake.setPower(1);
-                }
+                blocker.setPosition(1);
             }
-
-            //blocker.setPosition(0);
-            flywheel1.setPower(0);
-            //3. turn 45 degrees left
-            rotateDegrees(-44, 0.50);
-
-            blocker.setPosition(0);
-
-            // ----------------------------------------------------------------
-            //4. intake 1st spike mark
-            intake.setPower(1);
-            sleep(500);
-            driveRightInches(-14, 0.8);
-            driveForwardInches(30, 0.6);
-            sleep(500);
-            flywheel1.setPower(0.65);
-            driveForwardInches(-14, 0.8);
-            driveRightInches(16, 0.8);
-            rotateDegrees(50, 0.8);
-
-            //5. shoot
-            dt = 0;
-            t1 = runTime.seconds();
-
-            flywheel.setTargetRPM(targetRPM);
-            while (dt < 4.5) {
-                flywheel.setTargetRPM(targetRPM);
-                dt = runTime.seconds() - t1;
-                //3. open the gate to shoot
-                if (dt > 1.5) {
-                    blocker.setPosition(0.4);
-                }
-
-                if (dt > 1.6) {
-                    intake.setPower(1);
-                }
+            if (dt > 2.5) {
+                intake.setPower(0.6);
             }
-            //6. reset for next move
-            flywheel1.setPower(0);
-            blocker.setPosition(0);
-
-            // --------------------------------------------------------------------
-            // 2nd spike
-            //7. turn 45 degrees left
-            rotateDegrees(-50, 0.8);
-
-            //8. intake 2nd spike mark
-            intake.setPower(1);
-            driveForwardInches(-6, 0.8);
-            driveRightInches(-36, 0.8);
-            driveForwardInches(36, 0.6);
-            sleep(500);
-
-            driveForwardInches(-8, 0.8);
-            rotateDegrees(50, 0.8);
-            flywheel1.setPower(0.65);
-            driveRightInches(40, 0.8);
-            rotateDegrees(5, 0.8);
-            //driveForwardInches(7,0.83);
-
-
-            dt = 0;
-            t1 = runTime.seconds();
-
-
-
-            // Shoot second "spike?"
-            flywheel.setTargetRPM(targetRPM);
-            while (dt < 4.5) {
-                flywheel.setTargetRPM(targetRPM);
-                dt = runTime.seconds() - t1;
-                //3. open the gate to shoot
-                if (dt > 1.5) {
-                    blocker.setPosition(0.4);
-                }
-                if (dt > 1.6) {
-                    intake.setPower(1);
-                }
-            }
-
-            // GET OFF THE LINE!
-            blocker.setPosition(0);
-            intake.setPower(0);
-            driveRightInches(-12, 1);
-
         }
+
+        //blocker.setPosition(0);
+        flywheel1.setPower(0);
+        //3. turn 45 degrees left
+        rotateDegrees(-44, 0.50);
+
+        blocker.setPosition(0);
+
+        // ----------------------------------------------------------------
+        //4. intake 1st spike mark
+        intake.setPower(1);
+        sleep(500);
+        driveRightInches(-14, 0.8);
+        driveForwardInches(30, 0.6);
+        sleep(500);
+        flywheel1.setPower(0.65);
+        driveForwardInches(-14,0.8);
+        driveRightInches(16, 0.8);
+        rotateDegrees(50,0.8);
+
+        //5. shoot
+        dt = 0;
+        t1 = runTime.seconds();
+
+        flywheel.setTargetRPM(targetRPM);
+        while (dt < 4.5) {
+            flywheel.setTargetRPM(targetRPM);
+            dt = runTime.seconds() - t1;
+            //3. open the gate to shoot
+            if (dt > 1.5) {
+                blocker.setPosition(1);
+            }
+            if (dt > 1.6) {
+                intake.setPower(0.65);
+            }
+        }
+        //6. reset for next move
+        flywheel1.setPower(0);
+        blocker.setPosition(0);
+
+        // --------------------------------------------------------------------
+        // 2nd spike
+        //7. turn 45 degrees left
+        rotateDegrees(-50, 0.8);
+
+        //8. intake 2nd spike mark
+        intake.setPower(1);
+        driveForwardInches(-6, 0.8);
+        driveRightInches(-36,0.8);
+        driveForwardInches(36,0.6);
+        sleep(500);
+
+        driveForwardInches(-8,0.8);
+        rotateDegrees(50, 0.8);
+        flywheel1.setPower(0.65);
+        driveRightInches(40,0.8);
+        rotateDegrees(5,0.8);
+        //driveForwardInches(7,0.83);
+
+
+        dt = 0;
+        t1 = runTime.seconds();
+
+        if (result.isValid()) {
+            double tx = result.getTx();
+            double currentTime = timer .seconds();
+            double t = currentTime - lastTime;
+
+            // PID terms
+            double error = tx;
+            integral += error * t;
+            double derivative = (error - lastError) / t;
+
+            double turn = kP * error + kI * integral + kD * derivative;
+
+            // Deadband to prevent jitter
+            if (Math.abs(error) < 0.25) {
+                turn = 0;
+                integral = 0;   // reset integral when aligned
+            }
+
+            // Normalize wheel power
+            double leftPower = -turn;
+            double rightPower = turn;
+
+            double max = Math.max(Math.abs(leftPower), Math.abs(rightPower));
+            if (max > 1.0) {
+                leftPower /= max;
+                rightPower /= max;
+            }
+
+            // Apply to motors
+            frontLeft.setPower(leftPower);
+            backLeft.setPower(-leftPower);
+            frontRight.setPower(rightPower);
+            backRight.setPower(-rightPower);
+
+            // Save state
+            lastError = error;
+            lastTime = currentTime;
+
+            telemetry.addData("tx", tx);
+            telemetry.addData("turn", turn);
+            telemetry.update();
+
+        } else {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        }
+
+        // Shoot second "spike?"
+        flywheel.setTargetRPM(targetRPM);
+        while (dt < 4.5) {
+            flywheel.setTargetRPM(targetRPM);
+            dt = runTime.seconds() - t1;
+            //3. open the gate to shoot
+            if (dt > 1.5) {
+                blocker.setPosition(1);
+            }
+            if (dt > 1.6) {
+                intake.setPower(0.65);
+            }
+        }
+
+        // GET OFF THE LINE!
+        driveRightInches(-12,1);
+
     }
+}

@@ -19,6 +19,8 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 //import com.qualcomm.hardware.limelightvision.LLResultTypes;
 //import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+
+import java.util.List;
 //import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
@@ -26,7 +28,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 @Autonomous
 
-public class LongBlueDecodeAuto extends LinearOpMode {
+public class experimentalLongBlue extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
@@ -46,10 +48,10 @@ public class LongBlueDecodeAuto extends LinearOpMode {
                              int blInches, int brInches,
                              double timeoutS) {
 
-        int newFL = frontLeft.getCurrentPosition()  + (int)(flInches * COUNTS_PER_INCH);
-        int newFR = frontRight.getCurrentPosition() + (int)(frInches * COUNTS_PER_INCH);
-        int newBL = backLeft.getCurrentPosition()   + (int)(blInches * COUNTS_PER_INCH);
-        int newBR = backRight.getCurrentPosition()  + (int)(brInches * COUNTS_PER_INCH);
+        int newFL = frontLeft.getCurrentPosition() + (int) (flInches * COUNTS_PER_INCH);
+        int newFR = frontRight.getCurrentPosition() + (int) (frInches * COUNTS_PER_INCH);
+        int newBL = backLeft.getCurrentPosition() + (int) (blInches * COUNTS_PER_INCH);
+        int newBR = backRight.getCurrentPosition() + (int) (brInches * COUNTS_PER_INCH);
 
         frontLeft.setTargetPosition(newFL);
         frontRight.setTargetPosition(newFR);
@@ -72,7 +74,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         while (opModeIsActive() &&
                 timer.seconds() < timeoutS &&
                 (frontLeft.isBusy() || frontRight.isBusy() ||
-                        backLeft.isBusy()  || backRight.isBusy())) {
+                        backLeft.isBusy() || backRight.isBusy())) {
             // optional telemetry
             telemetry.addData("fl", "%d %d %f", newFL, frontLeft.getCurrentPosition(), Math.abs(speed));
             telemetry.update();
@@ -91,6 +93,96 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
+    double td = 0;
+    double tx = 0;
+    double ts = 0;
+
+    void setAlignmentMotorPower(LLResult result) {
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        if (result.isValid()) {
+
+            tx = 0.2 * result.getTx() + 0.8 * tx;
+            td = 0.2 * (Math.sqrt(result.getTa()) - 0.5) + 0.8 * td;  // Including the target here.
+
+            // Use raw corners to get the skew value
+            List<List<Double>> corners = result.getFiducialResults().get(0).getTargetCorners();
+
+            // This is the left Y range divided the right Y range
+            // tl is top left, br is bottom right, etc.
+            double tl_y = corners.get(0).get(1);
+            double tr_y = corners.get(1).get(1);
+            double br_y = corners.get(2).get(1);
+            double bl_y = corners.get(3).get(1);
+
+            // Left height
+            double leftHeight = tl_y - bl_y;
+            double rightHeight = tr_y - br_y;
+
+            // This TS is the ratio of the right and left height of the trapezoid
+            // Using an EWMA because it seems to be noisy
+            ts = 0.2 * 100 * (leftHeight / rightHeight - 1) + 0.8 * ts;
+
+            telemetry.addData("TS: ", ts);
+            telemetry.addData("TA: ", td);
+            telemetry.update();
+
+        } else {
+
+
+            // If you don't find a value, reduce the values to zero
+            tx = 0.9 * tx;
+            //ts = 0.9*ts;
+            td = 0.9 * td;
+
+            telemetry.addData("No TS: ", ts);
+            telemetry.update();
+        }
+
+        double forward = -1.5 * td;
+        double rotate = 0.01 * tx;
+        //double strafe = 0.2 * ts;
+        double strafe = 0;
+
+        double fl = forward + strafe + rotate;
+        double fr = forward - strafe - rotate;
+        double bl = forward - strafe + rotate;
+        double br = forward + strafe - rotate;
+
+        double maxAbs = 0.0;
+
+        if (Math.abs(fl) > maxAbs)
+            maxAbs = Math.abs(fl);
+
+        if (Math.abs(fr) > maxAbs)
+            maxAbs = Math.abs(fr);
+
+        if (Math.abs(bl) > maxAbs)
+            maxAbs = Math.abs(bl);
+
+        if (Math.abs(br) > maxAbs)
+            maxAbs = Math.abs(br);
+
+        // Dead band
+        if (maxAbs < 0.01) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        } else {
+            if (maxAbs < 1)
+                maxAbs = 1.0;
+
+            frontLeft.setPower(fl / maxAbs);
+            frontRight.setPower(fr / maxAbs);
+            backLeft.setPower(bl / maxAbs);
+            backRight.setPower(br / maxAbs);
+        }
+
+    }
 
 
     public void stopDrive() {
@@ -110,7 +202,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     }
 
     void driveForwardInches(double inches, double power) {
-        int ticks = (int)(inches * COUNTS_PER_INCH);
+        int ticks = (int) (inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -141,7 +233,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     }
 
     void driveRightInches(double inches, double power) {
-        int ticks = (int)(inches * COUNTS_PER_INCH);
+        int ticks = (int) (inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -153,10 +245,10 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         double coefBL = 1.0;
         double coefBR = 1.0;
 
-        frontLeft.setTargetPosition((int)(ticks * coefFL));
-        frontRight.setTargetPosition((int)(-ticks * coefFR));
-        backLeft.setTargetPosition((int)(-ticks * coefBL));
-        backRight.setTargetPosition((int)(ticks * coefBR));
+        frontLeft.setTargetPosition((int) (ticks * coefFL));
+        frontRight.setTargetPosition((int) (-ticks * coefFR));
+        backLeft.setTargetPosition((int) (-ticks * coefBL));
+        backRight.setTargetPosition((int) (ticks * coefBR));
 
         frontLeft.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         frontRight.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -184,7 +276,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
     void rotateDegrees(double degrees, double power) {
 
         double inches = degrees / 4.8;
-        int ticks = (int)(inches * COUNTS_PER_INCH);
+        int ticks = (int) (inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -214,7 +306,6 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
-    double tx = 0; // alignment x loc
     void setAlignmentRotatePower(LLResult result, double targetOffset) {
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -222,9 +313,9 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         if (result.isValid()) {
-            tx = 0.3*result.getTx() + 0.7*tx;
+            tx = 0.3 * result.getTx() + 0.7 * tx;
         } else {
-            tx = 0.9*tx;
+            tx = 0.9 * tx;
         }
 
         double rotate = 0.03 * (tx - targetOffset);
@@ -251,17 +342,17 @@ public class LongBlueDecodeAuto extends LinearOpMode {
 // This is gearing DOWN for less speed and more torque.
 // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
 //Need to do this, cpmr = 29?
-    static final double     COUNTS_PER_MOTOR_REV    = 28;    // rev motors
-    static final double     DRIVE_GEAR_REDUCTION    = 20;     // 20:1
-    static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
+    static final double COUNTS_PER_MOTOR_REV = 28;    // rev motors
+    static final double DRIVE_GEAR_REDUCTION = 20;     // 20:1
+    static final double WHEEL_DIAMETER_INCHES = 4.0;     // For figuring circumference
 
-    static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
+    static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * 3.1415);
     //Change these values to adjust speeds
-    static final double     DRIVE_SPEED             = 0.8;
-    static final double     TURN_SPEED              = 0.8;
-    static final double     LIFT_SPEED              = 0.2;
-    static final double     BACK_SPEED              = 0.5;
+    static final double DRIVE_SPEED = 0.8;
+    static final double TURN_SPEED = 0.8;
+    static final double LIFT_SPEED = 0.2;
+    static final double BACK_SPEED = 0.5;
 
     double flywheelSpeed;
     double intakeSpeed = 0.2;
@@ -331,12 +422,14 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         double dt = 0;
         double t1 = runTime.seconds();
 
+        driveForwardInches(5,0.8);
+
         sleep(100);
 
         telemetry.addData("Ta", limelight.getLatestResult().getTa());
         telemetry.update();
 
-        while (dt < 6) {
+        while (dt < 7.5) {
 
             double tx_temp = limelight.getLatestResult().getTx();
             double ta_temp = limelight.getLatestResult().getTa();
@@ -345,7 +438,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
             telemetry.addData("Ta", ta_temp);
             telemetry.update();
 
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            setAlignmentMotorPower(limelight.getLatestResult());
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
@@ -357,8 +450,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
             }
         }
 
-
-        //1st spike mark
+/*
         blocker.setPosition(0);
         driveForwardInches(15,0.6);
         rotateDegrees(-70, 0.5);
@@ -375,7 +467,7 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         runTime.reset();
 
         while (runTime.seconds() > 0 && runTime.seconds() < 7) {
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+            setAlignmentMotorPower(limelight.getLatestResult());
             flywheel.setTargetRPM(targetRPM);
             dt = runTime.seconds();
 
@@ -390,12 +482,47 @@ public class LongBlueDecodeAuto extends LinearOpMode {
             intake.setPower(1.0);
             //}
         }
+*/
+        //pickup from the hp zone
+        blocker.setPosition(0);
+        //driveForwardInches(15,0.6);
+        rotateDegrees(-70, 0.8);
+        intake.setPower(1);
+        driveRightInches(-8, 0.8);
+        driveForwardInches(50, 0.8);
+        sleep(2000);
+        //driveRightInches(8,0.5);
+        driveForwardInches(-40, 0.8);
+        rotateDegrees(70, 0.8);
+        intake.setPower(0);
 
+
+        runTime.reset();
+
+        while (runTime.seconds() > 0 && runTime.seconds() < 7) {
+            setAlignmentMotorPower(limelight.getLatestResult());
+            flywheel.setTargetRPM(targetRPM);
+            dt = runTime.seconds();
+
+            // give us a few seconds to find the lime light
+            if (dt < 3) {
+                continue;
+            }
+
+            //3. open the gate to shoot
+            //if (flywheel1.getVelocity() > 1400) {
+            blocker.setPosition(0.7);
+            intake.setPower(1.0);
+            //}
+
+
+
+        }
         flywheel1.setPower(0);
 
         //Get off the line!!
         blocker.setPosition(0);
-        driveForwardInches(12,0.6);
-
+        driveForwardInches(12, 0.6);
     }
+
 }

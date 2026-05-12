@@ -1,6 +1,10 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import androidx.annotation.NonNull;
+
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 //import com.qualcomm.robotcore.hardware.IMU;
@@ -15,28 +19,24 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 //import org.json.JSONObject;
 //import org.json.JSONArray;
 //import org.firstinspires.ftc.teamcode.Limelight;
-import com.qualcomm.hardware.limelightvision.LLResult;
+//import com.qualcomm.hardware.limelightvision.LLResult;
 //import com.qualcomm.hardware.limelightvision.LLResultTypes;
 //import com.qualcomm.hardware.limelightvision.LLStatus;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
+//import com.qualcomm.hardware.limelightvision.Limelight3A;
 //import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
+import java.util.List;
 
 
 @Autonomous
 
-public class LongBlueDecodeAuto extends LinearOpMode {
+public class simpleLimelight extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
     private DcMotor backLeft;
     private DcMotor backRight;
-    private DcMotor intake;
-    private DcMotorEx flywheel1;
-    private Servo blocker;
-    private Servo hood;
-    // private IMU imu;
+
     private Limelight3A limelight;
 
     ElapsedTime timer = new ElapsedTime();
@@ -105,8 +105,6 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         frontRight.setPower(0);
         backLeft.setPower(0);
         backRight.setPower(0);
-        intake.setPower(0);
-        flywheel1.setPower(0);
     }
 
     void driveForwardInches(double inches, double power) {
@@ -214,32 +212,93 @@ public class LongBlueDecodeAuto extends LinearOpMode {
         stopDrive();
     }
 
-    double tx = 0; // alignment x loc
-    void setAlignmentRotatePower(LLResult result, double targetOffset) {
-        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    void rotate(double power) {
 
+        frontLeft.setPower(power);
+        frontRight.setPower(-power);
+        backLeft.setPower(power);
+        backRight.setPower(-power);
+    }
+
+    void driveForward(double power) {
+
+        frontLeft.setPower(power);
+        frontRight.setPower(power);
+        backLeft.setPower(power);
+        backRight.setPower(power);
+    }
+
+    double tx, td, ts;
+
+    void setAlignmentMotorPower(LLResult result) {
         if (result.isValid()) {
+
             tx = 0.3*result.getTx() + 0.7*tx;
+            td = 0.3 * (Math.sqrt(result.getTa()) - 1.6) + 0.7*td;  // Including the target here.
+
+            // Use raw corners to get the skew value
+            List<List<Double>> corners = result.getFiducialResults().get(0).getTargetCorners();
+
+            // This is the left Y range divided the right Y range
+            // tl is top left, br is bottom right, etc.
+            double tl_y = corners.get(0).get(1);
+            double tr_y = corners.get(1).get(1);
+            double br_y = corners.get(2).get(1);
+            double bl_y = corners.get(3).get(1);
+
+            // Left height
+            double leftHeight = tl_y - bl_y;
+            double rightHeight = tr_y - br_y;
+
+            // This TS is the ratio of the right and left height of the trapezoid
+            // Using an EWMA because it seems to be noisy
+            ts = 0.3*100*(leftHeight / rightHeight  - 1) + 0.7*ts;
+
         } else {
+
+            // If you don't find a value, reduce the values to zero
             tx = 0.9*tx;
+            ts = 0.9*ts;
+            td = 0.9*td;
         }
 
-        double rotate = 0.03 * (tx - targetOffset);
+        double forward = -0.7 * td;
+        double rotate = 0.06 * tx;
+        double strafe = 0.06 * ts;
+
+        double fl = forward + strafe + rotate;
+        double fr = forward - strafe - rotate;
+        double bl = forward - strafe + rotate;
+        double br = forward + strafe - rotate;
+
+        double maxAbs = 0.0;
+
+        if (Math.abs(fl) > maxAbs)
+            maxAbs = Math.abs(fl);
+
+        if (Math.abs(fr) > maxAbs)
+            maxAbs = Math.abs(fr);
+
+        if (Math.abs(bl) > maxAbs)
+            maxAbs = Math.abs(bl);
+
+        if (Math.abs(br) > maxAbs)
+            maxAbs = Math.abs(br);
 
         // Dead band
-        if (rotate < 0.01) {
+        if (maxAbs < 0.01) {
             frontLeft.setPower(0);
             frontRight.setPower(0);
             backLeft.setPower(0);
             backRight.setPower(0);
         } else {
-            frontLeft.setPower(rotate);
-            frontRight.setPower(-rotate);
-            backLeft.setPower(rotate);
-            backRight.setPower(-rotate);
+            if (maxAbs < 1)
+                maxAbs = 1.0;
+
+            frontLeft.setPower(fl/maxAbs);
+            frontRight.setPower(fr/maxAbs);
+            backLeft.setPower(bl/maxAbs);
+            backRight.setPower(br/maxAbs);
         }
 
     }
@@ -272,30 +331,17 @@ public class LongBlueDecodeAuto extends LinearOpMode {
 
         // Initialize the drive system variables. you can ignore this. its all good and shouldnt need any changes
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
-        //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
-        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
-        //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
-        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_RIGHT
         backRight = hardwareMap.get(DcMotor.class, "back_right");
-        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
-        intake = hardwareMap.get(DcMotor.class, "intake");
-        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
-        flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
-        blocker = hardwareMap.get(Servo.class, "blocker");
-        hood = hardwareMap.get(Servo.class, "hood");
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -314,88 +360,29 @@ public class LongBlueDecodeAuto extends LinearOpMode {
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(50); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start();
+        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.start(); // This tells Limelight to start looking!
 
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.007, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
-        double targetRPM = 3100;
-
-        hood.setPosition(0.8);
 
         double dt = 0;
         double t1 = runTime.seconds();
+        double td = 0;
+        double tx = 0;
+        double ts = 0;
 
-        sleep(100);
+        //LLResult result = limelight.getLatestResult();
 
-        telemetry.addData("Ta", limelight.getLatestResult().getTa());
-        telemetry.update();
-
-        while (dt < 6) {
-
-            double tx_temp = limelight.getLatestResult().getTx();
-            double ta_temp = limelight.getLatestResult().getTa();
-
-            telemetry.addData("Tx", tx_temp);
-            telemetry.addData("Ta", ta_temp);
-            telemetry.update();
-
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
-            flywheel.setTargetRPM(targetRPM);
-            dt = runTime.seconds() - t1;
-            //3. open the gate to shoot
-            if (flywheel1.getVelocity() > 1400) {
-                blocker.setPosition(0.7);
-            }
-            if (flywheel1.getVelocity() > 1400) {
-                intake.setPower(1.0);
-            }
+        while (1==1) {
+            setAlignmentMotorPower(limelight.getLatestResult());
         }
 
-
-        //1st spike mark
-        blocker.setPosition(0);
-        driveForwardInches(15,0.6);
-        rotateDegrees(-70, 0.5);
-        intake.setPower(1);
-        driveRightInches(8,0.5);
-        driveForwardInches(40, 0.5);
-        sleep(500);
-        driveRightInches(-8,0.5);
-        driveForwardInches(-40, 0.5);
-        rotateDegrees(70, 0.5);
-        intake.setPower(0);
-        driveForwardInches(-12,0.6);
-
-        runTime.reset();
-
-        while (runTime.seconds() > 0 && runTime.seconds() < 7) {
-            //setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
-            flywheel.setTargetRPM(targetRPM);
-            dt = runTime.seconds();
-
-            // give us a few seconds to find the lime light
-            if (dt < 3) {
-                continue;
-            }
-
-            //3. open the gate to shoot
-            //if (flywheel1.getVelocity() > 1400) {
-            blocker.setPosition(0.7);
-            intake.setPower(1.0);
-            //}
-        }
-
-        flywheel1.setPower(0);
-
-        //Get off the line!!
-        blocker.setPosition(0);
-        driveForwardInches(12,0.6);
 
     }
 }
+
