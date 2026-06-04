@@ -28,7 +28,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 @TeleOp
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode2026_rpg extends LinearOpMode {
+public class HippoDecode2026_BLUE extends LinearOpMode {
 
 //import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 //import com.qualcomm.robotcore.eventloop.opmode.TeleOp;

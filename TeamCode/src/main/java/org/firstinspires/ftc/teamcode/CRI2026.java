@@ -15,10 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.VoltageSensor;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 
@@ -31,7 +28,7 @@ import java.util.List;
 @TeleOp
 // "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
 //   This means that subclass Hippo gets all the functionality of class LinearOpMode.
-public class HippoDecode extends LinearOpMode {
+public class CRI2026 extends LinearOpMode {
 
     public void stopDrive() {
         frontLeft.setPower(0);
@@ -125,6 +122,7 @@ public class HippoDecode extends LinearOpMode {
     private Servo blocker;
 
     private DcMotor intake;
+    private DcMotor roller;
 
 
     // This is an @Override annotation.
@@ -166,7 +164,10 @@ public class HippoDecode extends LinearOpMode {
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         intake = hardwareMap.get(DcMotor.class, "intake");
-        intake.setDirection(DcMotorSimple.Direction.REVERSE);
+        //intake.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        roller = hardwareMap.get(DcMotor.class, "roller");
+        roller.setDirection(DcMotorSimple.Direction.REVERSE);
 
         blocker =  hardwareMap.get(Servo.class, "blocker");
 
@@ -198,13 +199,14 @@ public class HippoDecode extends LinearOpMode {
         telemetry.addData("And","vice versa");
         telemetry.update();
 
-        // Pretty self explanatory. The program pauses execution on the following line,
+        // Pretty self-explanatory. The program pauses execution on the following line,
         // waiting for the play button to be pressed.
         waitForStart();
 
         // Declarations of variables representing the power levels of each of the four 
         //   drive motors. These are all on a scale from 0 to 1 (any values greater than 1
         //   or less than 0 will basically act the same as just a 1 or a 0)
+        double rollerPower;
         double intakePower;
         double targetRPM;
 
@@ -261,13 +263,27 @@ public class HippoDecode extends LinearOpMode {
 
             //----------GAMEPAD 1------------
 
-            //intake power
+            //roller power (normal)
+            /*
             if (gamepad2.right_stick_y != 0) {
-                intakePower = gamepad2.right_stick_y;
+                rollerPower = gamepad2.right_stick_y;
             } else if (gamepad2.left_stick_y != 0) {
-                intakePower = gamepad2.left_stick_y / 2;
+                rollerPower = gamepad2.left_stick_y / 2;
             } else {
-                intakePower = 0;
+                rollerPower = 0;
+            }*/
+
+
+            //intake and roller so asher can test
+            //intake:
+
+            rollerPower = 0;
+            intakePower = 0;
+            if (gamepad2.right_stick_y != 0) {
+                intakePower = -gamepad2.right_stick_y;
+            }
+            if (gamepad2.left_stick_y != 0) {
+                rollerPower = gamepad2.left_stick_y;
             }
 
             double x = -gamepad1.right_stick_x;
@@ -315,17 +331,13 @@ public class HippoDecode extends LinearOpMode {
                 br = 0.3;
             }
 
-            if (gamepad2.y) {
-                blocker.setPosition(0);
-            } else if (gamepad2.b) {
-                blocker.setPosition(0.2);
-            }
 
             frontLeft.setPower(fl);
             frontRight.setPower(fr);
             backLeft.setPower(-bl);
             backRight.setPower(br);
             intake.setPower(-intakePower);
+            roller.setPower(-rollerPower);
 
             //----------GAMEPAD 2------------
 
@@ -367,7 +379,6 @@ public class HippoDecode extends LinearOpMode {
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
-            targetRPM = 2100;
             if (shootShort) {
                 targetRPM = 2100 * distanceMult;
 
@@ -375,14 +386,14 @@ public class HippoDecode extends LinearOpMode {
                 targetRPM = 3100;
 
             } else {
-                targetRPM = 1850;
+                targetRPM = 2100;
             }
 
             if (gamepad2.x) {
                 flywheel1.setPower(-1);
             }
 
-            flywheel.setTargetRPM(targetRPM);
+            flywheel.setTargetRPM(-targetRPM);
 
             // Read velocity in ticks/sec
 
@@ -394,7 +405,7 @@ public class HippoDecode extends LinearOpMode {
             }
 
             if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) {
-                blocker.setPosition(0.3);
+                blocker.setPosition(0.7);
             } else {
                 blocker.setPosition(0);
             }
