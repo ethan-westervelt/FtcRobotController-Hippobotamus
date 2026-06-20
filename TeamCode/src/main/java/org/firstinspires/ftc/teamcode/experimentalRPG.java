@@ -71,21 +71,33 @@ public class experimentalRPG extends LinearOpMode {
 
     }
 
+    double calcTurretAlignmentPower(LLResult result) {
+        if (result.isValid()) {
+            tx = 0.3 * result.getTx() + 0.7 * tx;
+        } else {
+            tx = 0.9 * tx;
+        }
+
+        double turretPower = 0;
+        if (Math.abs(tx) > 0.1) {
+            turretPower = -tx * 0.03;
+        }
+        return(turretPower);
+    }
 
     // Declarations for the objects that represent the motors/servos:
     private DcMotor frontLeft;
     private DcMotor frontRight;
     private DcMotor backLeft;
     private DcMotor backRight;
-    //private DcMotor stand;
+    private DcMotor turret;
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
-    private IMU imu;
     private DcMotor intake;
     private ElapsedTime timer = new ElapsedTime();
     private Limelight3A limelight;
-    private DcMotor stand;
+
 
     // This is an @Override annotation.
     // Since Hippo is a subclass of LinearOpMode, it 'inherits' the public functions
@@ -107,28 +119,19 @@ public class experimentalRPG extends LinearOpMode {
         // There are also lines that set behaviors for the motors, such as REVERSE or BRAKE.
         // Most lines that set behaviors say something like "set behavior" and the behavior in all caps.
 
-
-        //NOTE: WHEEL DIRECTIONS ARE AS IF YOU WERE
         //  FRONT_LEFT
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
-        //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
         frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
-        //frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
-        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_RIGHT
         backRight = hardwareMap.get(DcMotor.class, "back_right");
-        //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
-
 
         //FLYWHEEL1
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
@@ -137,23 +140,22 @@ public class experimentalRPG extends LinearOpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.update();
 
-        //IMU
-        imu = hardwareMap.get(IMU.class, "imu");
-
         //INTAKE
         intake = hardwareMap.get(DcMotor.class, "intake");
-        //intake.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        //STAND
-        stand = hardwareMap.get(DcMotor.class, "stand");
-        stand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        stand.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //BLOCKER
         blocker = hardwareMap.get(Servo.class, "blocker");
 
         //HOOD
         hood = hardwareMap.get(Servo.class, "hood");
+
+        // TURRET
+        turret = hardwareMap.get(DcMotor.class, "turret");
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // You need this many ticks of the motor to get one degree of turret rotation
+        double turretEncPerDeg = -5.63;
 
         //LIMELIGHT
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -169,14 +171,6 @@ public class experimentalRPG extends LinearOpMode {
         // A low P value means that your controller will take a very long time to reach its target and will recover slowly.
         // The D term is derivative, and helps dampens small changes.
 
-        //initialize and calibrate the imu for navigation
-        RevHubOrientationOnRobot revHubOrientationOnRobot = new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
-                RevHubOrientationOnRobot.UsbFacingDirection.UP);
-        imu.resetYaw();
-        IMU.Parameters parameters = new IMU.Parameters(revHubOrientationOnRobot);
-        imu.initialize(parameters);
-
         flywheel1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
         flywheel1.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 
@@ -187,13 +181,12 @@ public class experimentalRPG extends LinearOpMode {
         // of servos, but doesn't really 'do anything'.
 
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Version", "2026 V3");
-        telemetry.addData("Caleb", "says hi");
+        telemetry.addData("Version", "2026 CRI_RPG_1");
         telemetry.addData("Ethan", "says hello");
         telemetry.addData("Tyler", "also says hi");
         telemetry.addData("Asher", "loves Mr DuBois");
         telemetry.addData("And", "vice versa");
-        telemetry.addData("We're going", "to States!");
+        telemetry.addData("We're going", "to Chicago!");
         telemetry.update();
 
         // Pretty self explanatory. The program pauses execution on the following line,
@@ -211,34 +204,97 @@ public class experimentalRPG extends LinearOpMode {
         double lastError = 0;
         double lastTime = timer.seconds();
 
-        // rpg 2026-02-26 kp to 0.01 from 0.007
         FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.016, 0.0, 0.0001, 0.00042);
 
-        // "power_multiplier" is a general value that allows us to control the global
-        //   power level of the drive motors. Although currently useless, if we ever
-        //   wanted a control to slow down the speed of the robot, we would need to use
-        //   this variable
-        double power_multiplier = -1;
-        // This is the main loop of the program, the stuff that runs continuously
-        //   while the op mode is running. "opModeIsActive()" is a function that returns
-        //   true so long as the op mode is active/running, so as soon as we hit stop
-        //   the loop will terminate.
+        double fl = 0;
+        double fr = 0;
+        double br = 0;
+        double bl = 0;
+        double rotate = 0;
+        double turretPower = 0;
+
         while (opModeIsActive()) {
 
-            // Take a stand
-            if (gamepad2.x | gamepad2.y) {
-                if (gamepad2.x) {
-                    stand.setTargetPosition(500);
-                    stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    stand.setPower(1);
-                } else if (gamepad2.y) {
-                    stand.setTargetPosition(0);
-                    stand.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    stand.setPower(1);
-                }
+            // -------------------------------
+            // ----------GAMEPAD 1 ------------
+            // -------------------------------
+
+            // Forward (y) and strafe (x)
+            double x = -gamepad1.right_stick_x;
+            double y = gamepad1.right_stick_y;
+
+            // Trigger is fast spin, bumpers are slow spin
+            if (gamepad1.left_trigger > 0) {
+                rotate = -1;
+            } else if (gamepad1.right_trigger > 0) {
+                rotate = 1;
+            } else if (gamepad1.left_bumper) {
+                rotate = -0.3;
+            } else if (gamepad1.right_bumper) {
+                rotate = 0.3;
             } else {
-                stand.setPower(0);
+                rotate = 0;
             }
+
+            // Power to the wheels are the sum of X, Y, and rotate
+            fl = y + x + rotate;
+            bl = y - x + rotate;
+            fr = y - x - rotate;
+            br = y + x - rotate;
+
+            // Normalize to the maximum power to a wheel
+            double maxPower = 1.0;
+            if (Math.abs(fl) > maxPower)
+                maxPower = Math.abs(fl);
+            if (Math.abs(bl) > maxPower)
+                maxPower = Math.abs(bl);
+            if (Math.abs(fr) > maxPower)
+                maxPower = Math.abs(fr);
+            if (Math.abs(br) > maxPower)
+                maxPower = Math.abs(br);
+
+            if (maxPower > 1)
+                maxPower = 1;
+
+            fl = fl / maxPower;
+            bl = bl / maxPower;
+            fr = fr / maxPower;
+            br = br / maxPower;
+
+            frontLeft.setPower(fl);
+            frontRight.setPower(fr);
+            backLeft.setPower(bl);
+            backRight.setPower(br);
+
+            // -------------------------------
+            // ----------GAMEPAD 2------------
+            // -------------------------------
+
+            // turret power!
+            // Either use manual bumpers or the left trigger for auto align.
+            // Positive power means counter clockwise.
+            turretPower = 0;
+            double turretPos = turret.getCurrentPosition() / turretEncPerDeg;
+            if (gamepad2.right_bumper) {
+                turretPower = -0.6;
+            }
+            if (gamepad2.left_bumper) {
+                turretPower = 0.6;
+            }
+            // Turret auto centering
+            if (gamepad2.left_trigger_pressed) {
+                turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
+            }
+
+            // If you're too far counter clockwise you can only have negative power
+            if (turretPos < -200) {
+                turretPower = Math.min(0,turretPower);
+            }
+            // Likewise, if you're too far clockwise, you can only have positive power
+            if (turretPos > 200) {
+                turretPower = Math.max(0,turretPower);
+            }
+            turret.setPower(turretPower);
 
             //intake power
             if (gamepad2.right_stick_y != 0) {
@@ -249,64 +305,13 @@ public class experimentalRPG extends LinearOpMode {
                 intakePower = 0;
             }
 
-            double x = -gamepad1.right_stick_x;
-            double y = gamepad1.right_stick_y;
-
-            double fl = -(x + y);
-            double br = (x + y);
-            double fr = -(y - x);
-            double bl = -(y - x);
-
-            //---------- GAMEPAD 1--------------
-            //Mecanum drive code DON'T TOUCH THIS
-            /*if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
-                double x_slow = -gamepad1.left_stick_x;
-                double y_slow = gamepad1.left_stick_y;
-
-                fl = -(y + x) / 2;
-                br = (y + x) / 2;
-                fr = -(y - x) / 2;
-                bl = -(y - x) / 2;
-            }*/
-
-            //This is the code for the fast spin
-            if (gamepad1.left_trigger != 0) {
-                fr = 1;
-                fl = -1;
-                br = -1;
-                bl = -1;
-            } else if (gamepad1.right_trigger != 0) {
-                fl = 1;
-                fr = -1;
-                bl = 1;
-                br = 1;
-            }
-
-            //Slow spin
-            if (gamepad1.left_bumper) {
-                fr = 0.3;
-                fl = -0.3;
-                br = -0.3;
-                bl = -0.3;
-            } else if (gamepad1.right_bumper) {
-                fl = 0.3;
-                fr = -0.3;
-                bl = 0.3;
-                br = 0.3;
-            }
-
-
-            //----------GAMEPAD 2------------
             if (gamepad2.y) {
                 blocker.setPosition(0);
             } else if (gamepad2.b) {
                 blocker.setPosition(0.2);
             }
 
-            frontLeft.setPower(-fl);
-            frontRight.setPower(-fr);
-            backLeft.setPower(bl);
-            backRight.setPower(-br);
+
             intake.setPower(-intakePower);
 
             if (gamepad2.dpad_up) {
@@ -314,6 +319,7 @@ public class experimentalRPG extends LinearOpMode {
             } else if (gamepad2.dpad_down) {
                 hood.setPosition(0.2);
             }
+
 
             // Auto centering.  If you are shooting short and a big far
             // then adjust the distance multiplier.
@@ -339,93 +345,42 @@ public class experimentalRPG extends LinearOpMode {
                     distanceMult = 20.4 / (ta + 18);
                 }
             }
-                /*limelight.pipelineSwitch(0);
-
-                LLResult result = limelight.getLatestResult();
-                LLStatus status = limelight.getStatus();
-
-                if (result.isValid()) {
-                    double tx = result.getTx();
-                    double ta = result.getTa();
-
-                    distanceMult = 20.4/(ta + 18);
-
-                    double currentTime = timer.seconds();
-                    double dt = currentTime - lastTime;//result.getTargetingLatency() / 1000.0; //replaced: currentTime - lastTime;
-
-                    // PID terms
-                    double error = tx;
-                    integral += error * dt;
-                    double derivative = (error - lastError) / dt;
-
-                    double turn = kP * error + kI * integral + kD * derivative;
-
-                    // Deadband to prevent jitter
-                    if (Math.abs(error) < 0.5) {
-                        turn = 0;
-                        integral = 0;   // reset integral when aligned
-                    }
-
-                    double rightPower = turn;
-
-                    double max = Math.abs(rightPower);//Math.max(Math.abs(leftPower), Math.abs(rightPower))
-
-                    if (max > 1.0) {
-                        rightPower /= max;
-                    }
-
-                    lastError = error;
-                    lastTime = currentTime;
-
-                    frontRight.setPower(rightPower);
-                    frontLeft.setPower(-rightPower);
-                    backLeft.setPower(rightPower);
-                    backRight.setPower(-rightPower);
-
-                    telemetry.addData("ta: ", ta);
-                    telemetry.addData("hood: ", hood.getPosition());
-                    telemetry.update();
-                }
-
-            }*/
 
 
-                boolean shootShort = gamepad2.left_bumper;
-                boolean shootLong = gamepad2.right_bumper;
+            boolean shootShort = gamepad2.left_bumper;
+            boolean shootLong = gamepad2.right_bumper;
 
-                targetRPM = 2100;
-                if (shootShort) {
-                    targetRPM = 2100 * distanceMult;
+            targetRPM = 2100;
+            if (shootShort) {
+                targetRPM = 2100 * distanceMult;
 
-                } else if (shootLong) {
-                    targetRPM = 3100;
+            } else if (shootLong) {
+                targetRPM = 3100;
 
-                } else {
-                    targetRPM = 1850;
-                }
+            } else {
+                targetRPM = 1850;
+            }
 
-                if (gamepad2.x) {
-                    flywheel1.setPower(-1);
-                }
+            if (gamepad2.x) {
+                flywheel1.setPower(-1);
+            }
 
-                flywheel.setTargetRPM(targetRPM);
+            flywheel.setTargetRPM(targetRPM);
 
-                // Read velocity in ticks/sec
+            // Read velocity in ticks/sec
 
-                double currentTPS = flywheel1.getVelocity();
-                double targetTPS = (targetRPM / 60.0) * 28.0;
+            double currentTPS = flywheel1.getVelocity();
+            double targetTPS = (targetRPM / 60.0) * 28.0;
 
-                if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
-                    gamepad2.rumble(100);
-                }
+            if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
+                gamepad2.rumble(100);
+            }
 
-                if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-                    blocker.setPosition(0.3);
-                } else {
-                    blocker.setPosition(0);
-                }
-
-
+            if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
+                blocker.setPosition(0.3);
+            } else {
+                blocker.setPosition(0);
+            }
 
         }
     }
