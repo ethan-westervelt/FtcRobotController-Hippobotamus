@@ -37,6 +37,21 @@ public class CRI2026 extends LinearOpMode {
         backRight.setPower(0);
     }
 
+    double ttx = 0;
+    double calcTurretAlignmentPower(LLResult result) {
+        if (result.isValid()) {
+            ttx = 0.35 * result.getTx(); //+ 0.7 * ttx;
+        } else {
+            ttx = 0.9 * tx;
+        }
+
+        double turretPower = 0;
+        if (Math.abs(ttx) > 0.15) {
+            turretPower = -ttx * 0.06;
+        }
+        return(turretPower);
+    }
+
     void rotateDegrees(double degrees, double power) {
 
         double     COUNTS_PER_MOTOR_REV    = 28;    // rev motors
@@ -116,13 +131,11 @@ public class CRI2026 extends LinearOpMode {
     private DcMotor backRight;
     private Servo hood;
     private Limelight3A limelight;
-
     private DcMotorEx flywheel1;
-
     private Servo blocker;
-
     private DcMotor intake;
     private DcMotor roller;
+    private DcMotor turret;
 
 
     // This is an @Override annotation.
@@ -161,10 +174,14 @@ public class CRI2026 extends LinearOpMode {
         backRight = hardwareMap.get(DcMotor.class, "back_right");
 
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
-        flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
+        //flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         intake = hardwareMap.get(DcMotor.class, "intake");
         //intake.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        turret = hardwareMap.get(DcMotor.class, "turret");
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         roller = hardwareMap.get(DcMotor.class, "roller");
         roller.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -264,26 +281,29 @@ public class CRI2026 extends LinearOpMode {
             //----------GAMEPAD 1------------
 
             //roller power (normal)
-            /*
+
+
+            rollerPower = 0;
+            intakePower = 0;
+
             if (gamepad2.right_stick_y != 0) {
                 rollerPower = gamepad2.right_stick_y;
             } else if (gamepad2.left_stick_y != 0) {
                 rollerPower = gamepad2.left_stick_y / 2;
             } else {
                 rollerPower = 0;
-            }*/
+            }
 
 
             //intake and roller so asher can test
             //intake:
 
-            rollerPower = 0;
-            intakePower = 0;
             if (gamepad2.right_stick_y != 0) {
                 intakePower = -gamepad2.right_stick_y;
-            }
-            if (gamepad2.left_stick_y != 0) {
-                rollerPower = gamepad2.left_stick_y;
+            } else if (gamepad2.left_stick_y != 0) {
+                intakePower = gamepad2.left_stick_y / 2 ;
+            } else {
+                intakePower = 0;
             }
 
             double x = -gamepad1.right_stick_x;
@@ -353,40 +373,60 @@ public class CRI2026 extends LinearOpMode {
                 hood.setPosition(0.2);
             }
 
-            // Auto centering.  If you are shooting short and a big far
-            // then adjust the distance multiplier.
-            double distanceMult = 1.0;
-            if (gamepad1.dpad_down && gamepad2.right_bumper) {
-                LLStatus status = limelight.getStatus();
+            double turretEncPerDeg = -5.63;
 
-                if (result.isValid()) {
-                    double tx = result.getTx();
-                    double ta = result.getTa();
-                    setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
-                    distanceMult = 20.4 / (ta + 18);
-                }
-            } else if (gamepad1.dpad_down) {
-                LLStatus status = limelight.getStatus();
-
-                if (result.isValid()) {
-                    double tx = result.getTx();
-                    double ta = result.getTa();
-                    setAlignmentRotatePower(limelight.getLatestResult(), 0);
-                    distanceMult = 20.4 / (ta + 18);
-                }
+            double turretPower = 0;
+            double currentPos = turret.getCurrentPosition();
+            double turretPos = currentPos / turretEncPerDeg;
+            if (gamepad2.right_bumper) {
+                turretPower = -0.6;
             }
+            if (gamepad2.left_bumper) {
+                turretPower = 0.6;
+            }
+            // Turret auto centering
+            if (gamepad2.left_trigger_pressed) {
+                turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
+            }
+
+            // If you're too far counterclockwise you can only have negative power
+            if (turretPos < -200) {
+                turretPower = Math.min(0,turretPower);
+            }
+            // Likewise, if you're too far clockwise, you can only have positive power
+            if (turretPos > 200) {
+                turretPower = Math.max(0,turretPower);
+            }
+            turret.setPower(turretPower);
+
+            telemetry.addData("turretPos", turretPos);
+            telemetry.addData("turretPower", turretPower);
+
+
+            if (result != null && result.isValid()) {//
+                double tx = result.getTx(); // How far left or right the target is (degrees)
+                double ty = result.getTy(); // How far up or down the target is (degrees)
+                double ta = result.getTa(); // How big the target looks (0%-100% of the image)
+
+                telemetry.addData("Target X", tx);
+                telemetry.addData("Target Y", ty);
+                telemetry.addData("Target Area", ta);
+            } else {
+                telemetry.addData("Limelight", "No Targets");
+            }
+            telemetry.update();
 
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
             if (shootShort) {
-                targetRPM = 2100 * distanceMult;
+                targetRPM = 3100; //* distanceMult;
 
             } else if (shootLong) {
                 targetRPM = 3100;
 
             } else {
-                targetRPM = 2100;
+                targetRPM = 3100;
             }
 
             if (gamepad2.x) {

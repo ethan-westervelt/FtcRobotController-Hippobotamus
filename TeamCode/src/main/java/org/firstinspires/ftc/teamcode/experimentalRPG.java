@@ -14,8 +14,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 
@@ -41,6 +39,29 @@ public class experimentalRPG extends LinearOpMode {
     }
 
     double tx = 0;
+
+    double turretRotate =0;
+
+    //so like what if we just reused this code for the turret???
+    void setTurretRotatePower(LLResult result, double targetOffset) {
+        turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        if (result.isValid()) {
+            tx = result.getTx();//0.3 * result.getTx() + 0.7 * tx;
+        } else {
+            tx = 0;//0.9 * tx;
+        }
+
+        turretRotate = (tx - targetOffset);
+
+        // Dead band
+        if (turretRotate < 0.01) {
+            turret.setPower(0);
+        } else {
+            turret.setPower(turretRotate);
+        }
+
+    }
 
     void setAlignmentRotatePower(LLResult result, double targetOffset) {
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -71,16 +92,18 @@ public class experimentalRPG extends LinearOpMode {
 
     }
 
+
+    double ttx = 0;
     double calcTurretAlignmentPower(LLResult result) {
         if (result.isValid()) {
-            tx = 0.3 * result.getTx() + 0.7 * tx;
+            ttx = 0.35 * result.getTx(); //+ 0.7 * ttx;
         } else {
-            tx = 0.9 * tx;
+            ttx = 0.9 * tx;
         }
 
         double turretPower = 0;
-        if (Math.abs(tx) > 0.1) {
-            turretPower = -tx * 0.03;
+        if (Math.abs(ttx) > 0.15) {
+            turretPower = -ttx * 0.06;
         }
         return(turretPower);
     }
@@ -160,8 +183,8 @@ public class experimentalRPG extends LinearOpMode {
         //LIMELIGHT
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
-        limelight.start(); // This tells Limelight to start looking!
+        limelight.setPollRateHz(100);
+        limelight.start();
 
         // These lines create 2 instances of the PID controller class.
         // A PID controller has three parts: a P term, an I term, and a D term(surprisingly enough).
@@ -194,7 +217,7 @@ public class experimentalRPG extends LinearOpMode {
         waitForStart();
 
         double intakePower;
-        double targetRPM;
+        double targetRPM = 2100;
 
         double kP = 0.06; //tuned down to try to fix drift
         double kI = 0.0;
@@ -212,6 +235,9 @@ public class experimentalRPG extends LinearOpMode {
         double bl = 0;
         double rotate = 0;
         double turretPower = 0;
+
+        PIDController flywheelPID = new PIDController(0.007, 0.0000, 0.0001);
+        PIDController turretPID = new PIDController(0.007, 0.0000, 0.0001);//needs to be tuned
 
         while (opModeIsActive()) {
 
@@ -272,9 +298,11 @@ public class experimentalRPG extends LinearOpMode {
 
             // turret power!
             // Either use manual bumpers or the left trigger for auto align.
-            // Positive power means counter clockwise.
+            // Positive power means counterclockwise.
             turretPower = 0;
-            double turretPos = turret.getCurrentPosition() / turretEncPerDeg;
+            LLResult result = limelight.getLatestResult();
+            double currentPos = turret.getCurrentPosition();
+            double turretPos = currentPos / turretEncPerDeg;
             if (gamepad2.right_bumper) {
                 turretPower = -0.6;
             }
@@ -286,7 +314,7 @@ public class experimentalRPG extends LinearOpMode {
                 turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
             }
 
-            // If you're too far counter clockwise you can only have negative power
+            // If you're too far counterclockwise you can only have negative power
             if (turretPos < -200) {
                 turretPower = Math.min(0,turretPower);
             }
@@ -296,6 +324,22 @@ public class experimentalRPG extends LinearOpMode {
             }
             turret.setPower(turretPower);
 
+            telemetry.addData("turretPos", turretPos);
+            telemetry.addData("turretPower", turretPower);
+            telemetry.addData("rotatePower", turretRotate);
+
+            if (result != null && result.isValid()) {//
+                double tx = result.getTx(); // How far left or right the target is (degrees)
+                double ty = result.getTy(); // How far up or down the target is (degrees)
+                double ta = result.getTa(); // How big the target looks (0%-100% of the image)
+
+                telemetry.addData("Target X", tx);
+                telemetry.addData("Target Y", ty);
+                telemetry.addData("Target Area", ta);
+            } else {
+                telemetry.addData("Limelight", "No Targets");
+            }
+            telemetry.update();
             //intake power
             if (gamepad2.right_stick_y != 0) {
                 intakePower = gamepad2.right_stick_y;
@@ -324,41 +368,26 @@ public class experimentalRPG extends LinearOpMode {
             // Auto centering.  If you are shooting short and a big far
             // then adjust the distance multiplier.
             double distanceMult = 1.0;
-            if (gamepad1.dpad_down && gamepad2.right_bumper) {
-                LLResult result = limelight.getLatestResult();
+            /*if (gamepad2.dpad_down) {
                 LLStatus status = limelight.getStatus();
 
                 if (result.isValid()) {
                     double tx = result.getTx();
                     double ta = result.getTa();
-                    setAlignmentRotatePower(limelight.getLatestResult(), -3.0);
+                    setTurretRotatePower(limelight.getLatestResult(), 0);
                     distanceMult = 20.4 / (ta + 18);
                 }
-            } else if (gamepad1.dpad_down) {
-                LLResult result = limelight.getLatestResult();
-                LLStatus status = limelight.getStatus();
 
-                if (result.isValid()) {
-                    double tx = result.getTx();
-                    double ta = result.getTa();
-                    setAlignmentRotatePower(limelight.getLatestResult(), 0);
-                    distanceMult = 20.4 / (ta + 18);
-                }
-            }
-
+            }*/
 
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
-            targetRPM = 2100;
             if (shootShort) {
                 targetRPM = 2100 * distanceMult;
 
             } else if (shootLong) {
                 targetRPM = 3100;
-
-            } else {
-                targetRPM = 1850;
             }
 
             if (gamepad2.x) {
@@ -377,9 +406,9 @@ public class experimentalRPG extends LinearOpMode {
             }
 
             if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-                blocker.setPosition(0.3);
+               // blocker.setPosition(0.3);
             } else {
-                blocker.setPosition(0);
+                //blocker.setPosition(0);
             }
 
         }
