@@ -6,7 +6,6 @@ package org.firstinspires.ftc.teamcode;
 //DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
 
 import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLStatus;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -15,7 +14,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
-
+import com.qualcomm.robotcore.util.Range;
 
 //import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 //import com.qualcomm.robotcore.util.PIDFController;
@@ -40,7 +39,7 @@ public class experimentalRPG extends LinearOpMode {
 
     double tx = 0;
 
-    double turretRotate =0;
+    double turretRotate = 0;
 
     //so like what if we just reused this code for the turret???
     void setTurretRotatePower(LLResult result, double targetOffset) {
@@ -95,15 +94,16 @@ public class experimentalRPG extends LinearOpMode {
 
     double ttx = 0;
     double calcTurretAlignmentPower(LLResult result) {
+
         if (result.isValid()) {
-            ttx = 0.35 * result.getTx(); //+ 0.7 * ttx;
+            ttx = 0.7 * result.getTx() + 0.3 * ttx;
         } else {
-            ttx = 0.9 * tx;
+            ttx = 0.9 * ttx;
         }
 
         double turretPower = 0;
-        if (Math.abs(ttx) > 0.15) {
-            turretPower = -ttx * 0.06;
+        if (Math.abs(ttx) > 0.1) {
+            turretPower = -ttx * 0.03;//output;
         }
         return(turretPower);
     }
@@ -114,6 +114,7 @@ public class experimentalRPG extends LinearOpMode {
     private DcMotor backLeft;
     private DcMotor backRight;
     private DcMotor turret;
+    private DcMotor roller;
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
@@ -177,13 +178,15 @@ public class experimentalRPG extends LinearOpMode {
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        roller = hardwareMap.get(DcMotor.class, "roller");
+
         // You need this many ticks of the motor to get one degree of turret rotation
         double turretEncPerDeg = -5.63;
 
         //LIMELIGHT
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100);
+        limelight.setPollRateHz(50);
         limelight.start();
 
         // These lines create 2 instances of the PID controller class.
@@ -217,6 +220,7 @@ public class experimentalRPG extends LinearOpMode {
         waitForStart();
 
         double intakePower;
+        double rollerPower;
         double targetRPM = 2100;
 
         double kP = 0.06; //tuned down to try to fix drift
@@ -237,7 +241,7 @@ public class experimentalRPG extends LinearOpMode {
         double turretPower = 0;
 
         PIDController flywheelPID = new PIDController(0.007, 0.0000, 0.0001);
-        PIDController turretPID = new PIDController(0.007, 0.0000, 0.0001);//needs to be tuned
+        //PIDController turretPID = new PIDController(0.007, 0.0000, 0.0001);//needs to be tuned
 
         while (opModeIsActive()) {
 
@@ -299,33 +303,46 @@ public class experimentalRPG extends LinearOpMode {
             // turret power!
             // Either use manual bumpers or the left trigger for auto align.
             // Positive power means counterclockwise.
-            turretPower = 0;
             LLResult result = limelight.getLatestResult();
             double currentPos = turret.getCurrentPosition();
             double turretPos = currentPos / turretEncPerDeg;
-            if (gamepad2.right_bumper) {
-                turretPower = -0.6;
+
+            turretPower = 0;
+
+            //Manual turret control
+            if (gamepad2.left_trigger > 0) {
+                turretPower = 0.6 * gamepad2.left_trigger;
             }
-            if (gamepad2.left_bumper) {
-                turretPower = 0.6;
-            }
-            // Turret auto centering
-            if (gamepad2.left_trigger_pressed) {
-                turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
+            if (gamepad2.right_trigger > 0) {
+                turretPower = -0.6 * gamepad2.right_trigger;
             }
 
+            // Turret auto centering
+            // If you're holding down the button, try to use auto recentering.
+            // If you don't find it then it falls back to what you're doing manually.
+            if (gamepad2.left_bumper) {
+
+                if (result.isValid()) {
+                    turretPower = calcTurretAlignmentPower(result);
+                }
+            }
+
+            telemetry.addData("turretPower_PRE", turretPower);
+
             // If you're too far counterclockwise you can only have negative power
-            if (turretPos < -200) {
+            if (turretPos < -180) {
                 turretPower = Math.min(0,turretPower);
             }
             // Likewise, if you're too far clockwise, you can only have positive power
-            if (turretPos > 200) {
-                turretPower = Math.max(0,turretPower);
+            if (turretPos > 180) {
+                turretPower =
+                        Math.max(0,turretPower);
             }
             turret.setPower(turretPower);
 
             telemetry.addData("turretPos", turretPos);
             telemetry.addData("turretPower", turretPower);
+            telemetry.addData("turretTx", ttx);
             telemetry.addData("rotatePower", turretRotate);
 
             if (result != null && result.isValid()) {//
@@ -339,8 +356,16 @@ public class experimentalRPG extends LinearOpMode {
             } else {
                 telemetry.addData("Limelight", "No Targets");
             }
-            telemetry.update();
+
             //intake power
+            if (gamepad2.right_stick_y != 0) {
+                rollerPower = gamepad2.right_stick_y;
+            } else if (gamepad2.left_stick_y != 0) {
+                rollerPower = gamepad2.left_stick_y / 2;
+            } else {
+                rollerPower = 0;
+            }
+
             if (gamepad2.right_stick_y != 0) {
                 intakePower = gamepad2.right_stick_y;
             } else if (gamepad2.left_stick_y != 0) {
@@ -349,14 +374,8 @@ public class experimentalRPG extends LinearOpMode {
                 intakePower = 0;
             }
 
-            if (gamepad2.y) {
-                blocker.setPosition(0);
-            } else if (gamepad2.b) {
-                blocker.setPosition(0.2);
-            }
-
-
-            intake.setPower(-intakePower);
+            intake.setPower(intakePower);
+            roller.setPower(rollerPower);
 
             if (gamepad2.dpad_up) {
                 hood.setPosition(0.75);
@@ -367,48 +386,48 @@ public class experimentalRPG extends LinearOpMode {
 
             // Auto centering.  If you are shooting short and a big far
             // then adjust the distance multiplier.
-            double distanceMult = 1.0;
-            /*if (gamepad2.dpad_down) {
-                LLStatus status = limelight.getStatus();
-
-                if (result.isValid()) {
-                    double tx = result.getTx();
-                    double ta = result.getTa();
-                    setTurretRotatePower(limelight.getLatestResult(), 0);
-                    distanceMult = 20.4 / (ta + 18);
-                }
-
-            }*/
+            double ta = result.getTa();
+            double distanceMult = 20.4/(ta +18);
+            telemetry.addData("distanceMult", distanceMult);
+            telemetry.addData("Target speed", (targetRPM/60)*28);
+            telemetry.addData("Actual speed", flywheel1.getVelocity());
+            //telemetry.update();
 
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
             if (shootShort) {
-                targetRPM = 2100 * distanceMult;
-
+                 targetRPM = 2300 * distanceMult;
             } else if (shootLong) {
-                targetRPM = 3100;
+                targetRPM = 3100;//dont know if we need the distance adapter here
+            } else {
+                targetRPM = 2500;
             }
 
-            if (gamepad2.x) {
-                flywheel1.setPower(-1);
-            }
+            double target = targetRPM;
+            double currentTPS = flywheel1.getVelocity();   // ticks per second
+            double targetTPS = (target / 60.0) * 28.0;  // convert RPM → ticks/sec
 
-            flywheel.setTargetRPM(targetRPM);
+            double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+            pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+            double kF = 0.00042;
+            double output = pidOutput + kF * targetTPS;
 
-            // Read velocity in ticks/sec
+            flywheel1.setPower(output);
 
-            double currentTPS = flywheel1.getVelocity();
-            double targetTPS = (targetRPM / 60.0) * 28.0;
+            telemetry.addData("Target TPS", targetTPS);
+            telemetry.addData("Current TPS", currentTPS);
+            telemetry.addData("PID Output", pidOutput);
+            telemetry.update();
 
             if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
                 gamepad2.rumble(100);
             }
 
             if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-               // blocker.setPosition(0.3);
+               blocker.setPosition(0.7);
             } else {
-                //blocker.setPosition(0);
+                blocker.setPosition(0);
             }
 
         }

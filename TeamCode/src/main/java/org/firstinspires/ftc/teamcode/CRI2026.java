@@ -16,6 +16,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 
@@ -227,14 +228,9 @@ public class CRI2026 extends LinearOpMode {
         double intakePower;
         double targetRPM;
 
-
+        PIDController flywheelPID = new PIDController(0.007, 0.0000, 0.0001);
         FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.005, 0.0, 0.0001, 0.00042);
 
-        // "power_multiplier" is a general value that allows us to control the global
-        //   power level of the drive motors. Although currently useless, if we ever
-        //   wanted a control to slow down the speed of the robot, we would need to use 
-        //   this variable
-        double power_multiplier = 1;
         // This is the main loop of the program, the stuff that runs continuously 
         //   while the op mode is running. "opModeIsActive()" is a function that returns
         //   true so long as the op mode is active/running, so as soon as we hit stop 
@@ -274,7 +270,7 @@ public class CRI2026 extends LinearOpMode {
 
                     telemetry.addData("tx", tx);
                     telemetry.addData("turn power", power);
-                    telemetry.update();
+
 
                 }
 
@@ -295,9 +291,6 @@ public class CRI2026 extends LinearOpMode {
             }
 
 
-            //intake and roller so asher can test
-            //intake:
-
             if (gamepad2.right_stick_y != 0) {
                 intakePower = -gamepad2.right_stick_y;
             } else if (gamepad2.left_stick_y != 0) {
@@ -306,13 +299,19 @@ public class CRI2026 extends LinearOpMode {
                 intakePower = 0;
             }
 
+            double fl = 0;
+            double br = 0;
+            double fr = 0;
+            double bl = 0;
+
+
             double x = -gamepad1.right_stick_x;
             double y = gamepad1.right_stick_y;
 
-            double fl = -(x + y);
-            double br = (x + y);
-            double fr = -(y - x);
-            double bl = -(y - x);
+            fl = -(x + y);
+            br = (x + y);
+            fr = -(y - x);
+            bl = -(y - x);
 
             //Mecanum drive code DON'T TOUCH THIS
             if (gamepad1.left_stick_x != 0 || gamepad1.left_stick_y != 0) {
@@ -378,12 +377,12 @@ public class CRI2026 extends LinearOpMode {
             double turretPower = 0;
             double currentPos = turret.getCurrentPosition();
             double turretPos = currentPos / turretEncPerDeg;
-            if (gamepad2.right_bumper) {
+            /*if (gamepad2.right_bumper) {
                 turretPower = -0.6;
             }
             if (gamepad2.left_bumper) {
                 turretPower = 0.6;
-            }
+            }*/
             // Turret auto centering
             if (gamepad2.left_trigger_pressed) {
                 turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
@@ -403,7 +402,7 @@ public class CRI2026 extends LinearOpMode {
             telemetry.addData("turretPower", turretPower);
 
 
-            if (result != null && result.isValid()) {//
+            if (result != null && result.isValid()) {
                 double tx = result.getTx(); // How far left or right the target is (degrees)
                 double ty = result.getTy(); // How far up or down the target is (degrees)
                 double ta = result.getTa(); // How big the target looks (0%-100% of the image)
@@ -421,9 +420,58 @@ public class CRI2026 extends LinearOpMode {
 
             if (shootShort) {
                 targetRPM = 3100; //* distanceMult;
+                // Read velocity in ticks/sec
+                double currentTPS = flywheel1.getVelocity();   // ticks per second
+                double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
+
+                double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+                pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+                double kF = 0.00042;
+                double output = pidOutput + kF * targetTPS;
+
+                while (gamepad2.left_bumper && opModeIsActive() && !flywheel.isAtSpeed(2500, 50)) {//waits to proceed until the flywheel is up to speed
+                    flywheel.setTargetRPM(2500);
+                }
+                if (currentTPS >= 1190 && currentTPS <= 1210) {
+                    gamepad2.rumble(500);
+                }
+                blocker.setPosition(1);
+                if (!gamepad2.left_bumper) {
+                    blocker.setPosition(0);
+                }
+
+                telemetry.addData("Target TPS", targetTPS);
+                telemetry.addData("Current TPS", currentTPS);
+                telemetry.addData("PID Output", pidOutput);
+                telemetry.update();
 
             } else if (shootLong) {
-                targetRPM = 3100;
+                targetRPM = 4000;
+                // Read velocity in ticks/sec
+                double currentTPS = flywheel1.getVelocity();   // ticks per second
+                double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
+
+                double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+                pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+                double kF = 0.00042;
+                double output = pidOutput + kF * targetTPS;
+
+                while (gamepad2.left_bumper && opModeIsActive() && !flywheel.isAtSpeed(2500, 50)) {//waits to proceed until the flywheel is up to speed
+                    flywheel.setTargetRPM(2500);
+                }
+                if (currentTPS >= 1190 && currentTPS <= 1210) {
+                    gamepad2.rumble(500);
+                }
+                blocker.setPosition(1);
+                if (!gamepad2.left_bumper) {
+                    blocker.setPosition(0);
+                }
+
+                telemetry.addData("Target TPS", targetTPS);
+                telemetry.addData("Current TPS", currentTPS);
+                telemetry.addData("PID Output", pidOutput);
+                telemetry.update();
+
 
             } else {
                 targetRPM = 3100;
