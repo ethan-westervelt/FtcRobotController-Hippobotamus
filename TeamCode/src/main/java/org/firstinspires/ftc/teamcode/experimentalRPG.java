@@ -102,8 +102,8 @@ public class experimentalRPG extends LinearOpMode {
         }
 
         double turretPower = 0;
-        if (Math.abs(ttx) > 0.1) {
-            turretPower = -ttx * 0.03;//output;
+        if (Math.abs(ttx) > 0.2) {
+            turretPower = -ttx * 0.025;//output;
         }
         return(turretPower);
     }
@@ -240,7 +240,7 @@ public class experimentalRPG extends LinearOpMode {
         double rotate = 0;
         double turretPower = 0;
 
-        PIDController flywheelPID = new PIDController(0.007, 0.0000, 0.0001);
+        PIDController flywheelPID = new PIDController(0.2, 0.0000, 0.0003);
         //PIDController turretPID = new PIDController(0.007, 0.0000, 0.0001);//needs to be tuned
 
         while (opModeIsActive()) {
@@ -254,13 +254,13 @@ public class experimentalRPG extends LinearOpMode {
             double y = gamepad1.right_stick_y;
 
             // Trigger is fast spin, bumpers are slow spin
-            if (gamepad1.left_trigger > 0) {
+            if (gamepad1.right_trigger > 0) {
                 rotate = -1;
-            } else if (gamepad1.right_trigger > 0) {
+            } else if (gamepad1.left_trigger > 0) {
                 rotate = 1;
-            } else if (gamepad1.left_bumper) {
-                rotate = -0.3;
             } else if (gamepad1.right_bumper) {
+                rotate = -0.3;
+            } else if (gamepad1.left_bumper) {
                 rotate = 0.3;
             } else {
                 rotate = 0;
@@ -310,17 +310,17 @@ public class experimentalRPG extends LinearOpMode {
             turretPower = 0;
 
             //Manual turret control
-            if (gamepad2.left_trigger > 0) {
+            if (gamepad2.left_trigger > 0.1) {
                 turretPower = 0.6 * gamepad2.left_trigger;
             }
-            if (gamepad2.right_trigger > 0) {
+            if (gamepad2.right_trigger > 0.1) {
                 turretPower = -0.6 * gamepad2.right_trigger;
             }
 
             // Turret auto centering
             // If you're holding down the button, try to use auto recentering.
             // If you don't find it then it falls back to what you're doing manually.
-            if (gamepad2.left_bumper) {
+            if (gamepad2.y) {
 
                 if (result.isValid()) {
                     turretPower = calcTurretAlignmentPower(result);
@@ -330,11 +330,11 @@ public class experimentalRPG extends LinearOpMode {
             telemetry.addData("turretPower_PRE", turretPower);
 
             // If you're too far counterclockwise you can only have negative power
-            if (turretPos < -180) {
+            if (turretPos < -170) {
                 turretPower = Math.min(0,turretPower);
             }
             // Likewise, if you're too far clockwise, you can only have positive power
-            if (turretPos > 180) {
+            if (turretPos > 170) {
                 turretPower =
                         Math.max(0,turretPower);
             }
@@ -358,19 +358,14 @@ public class experimentalRPG extends LinearOpMode {
             }
 
             //intake power
-            if (gamepad2.right_stick_y != 0) {
-                rollerPower = gamepad2.right_stick_y;
-            } else if (gamepad2.left_stick_y != 0) {
-                rollerPower = gamepad2.left_stick_y / 2;
+            if (gamepad2.left_stick_y != 0) {
+                rollerPower = gamepad2.left_stick_y;
+                intakePower = gamepad2.left_stick_y;
+            } else if (gamepad2.right_stick_y != 0) {
+                rollerPower = gamepad2.right_stick_y / 0.75;
+                intakePower = gamepad2.right_stick_y / 0.75;
             } else {
                 rollerPower = 0;
-            }
-
-            if (gamepad2.right_stick_y != 0) {
-                intakePower = gamepad2.right_stick_y;
-            } else if (gamepad2.left_stick_y != 0) {
-                intakePower = gamepad2.left_stick_y / 2;
-            } else {
                 intakePower = 0;
             }
 
@@ -388,18 +383,19 @@ public class experimentalRPG extends LinearOpMode {
             // then adjust the distance multiplier.
             double ta = result.getTa();
             double distanceMult = 20.4/(ta +18);
+            telemetry.addData("Hood position: ", hood.getPosition());
             telemetry.addData("distanceMult", distanceMult);
             telemetry.addData("Target speed", (targetRPM/60)*28);
             telemetry.addData("Actual speed", flywheel1.getVelocity());
-            //telemetry.update();
+            telemetry.update();
 
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
             if (shootShort) {
-                 targetRPM = 2300 * distanceMult;
+                 targetRPM = 2500 * distanceMult;
             } else if (shootLong) {
-                targetRPM = 3100;//dont know if we need the distance adapter here
+                targetRPM = 3500;//dont know if we need the distance adapter here
             } else {
                 targetRPM = 2500;
             }
@@ -418,16 +414,19 @@ public class experimentalRPG extends LinearOpMode {
             telemetry.addData("Target TPS", targetTPS);
             telemetry.addData("Current TPS", currentTPS);
             telemetry.addData("PID Output", pidOutput);
-            telemetry.update();
+            // telemetry.update();
 
             if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
                 gamepad2.rumble(100);
             }
 
-            if (shootShort || shootLong && flywheel.isAtSpeed(3100, 60)) { //flywheel.isAtSpeed(2350, 200)
-               blocker.setPosition(0.7);
+            hood.setPosition(0.75);
+
+            if (shootShort || shootLong) { //flywheel.isAtSpeed(2350, 200)
+               blocker.setPosition(0.75);
+
             } else {
-                blocker.setPosition(0);
+                blocker.setPosition(0.1);
             }
 
         }

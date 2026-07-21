@@ -7,13 +7,14 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 //import com.qualcomm.robotcore.hardware.IMU;
 //import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-// import com.qualcomm.robotcore.hardware.IMU;
+//import com.qualcomm.robotcore.hardware.IMU;
 //import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.Range;
 
 import java.util.List;
 //import org.json.JSONObject;
@@ -36,10 +37,11 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     private DcMotor backLeft;
     private DcMotor backRight;
     private DcMotor intake;
+    private DcMotor roller;
     private DcMotorEx flywheel1;
     private Servo blocker;
     private Servo hood;
-    // private IMU imu;
+    private DcMotor turret;
     private Limelight3A limelight;
     ElapsedTime timer = new ElapsedTime();
 
@@ -133,6 +135,10 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         frontRight.setPower(power);
         backLeft.setPower(power);
         backRight.setPower(power);
+
+        telemetry.addData("power", power);
+        telemetry.update();
+
 
         while (opModeIsActive() && frontLeft.isBusy() && frontRight.isBusy()
                 && backLeft.isBusy() && backRight.isBusy()) {
@@ -297,7 +303,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         } else {
             if (maxAbs < 1)
                 maxAbs = 1.0;
-
+            // RPG 2026-07-20 Flipping the sign of everything below ...
             frontLeft.setPower(fl/maxAbs);
             frontRight.setPower(fr/maxAbs);
             backLeft.setPower(bl/maxAbs);
@@ -314,7 +320,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
 //Need to do this, cpmr = 29?
     static final double     COUNTS_PER_MOTOR_REV    = 28;    // rev motors
-    static final double     DRIVE_GEAR_REDUCTION    = 20;     // 20:1
+    static final double     DRIVE_GEAR_REDUCTION    = 15;     // 15:1
     static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
 
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
@@ -324,7 +330,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     static final double     TURN_SPEED              = 0.8;
     static final double     LIFT_SPEED              = 0.2;
     static final double     BACK_SPEED              = 0.5;
-
+    PIDController flywheelPID = new PIDController(0.2, 0.0000, 0.0003);
     double flywheelSpeed;
     double intakeSpeed = 0.2;
     boolean running = false;
@@ -346,37 +352,44 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         //BACK_LEFT
         backLeft = hardwareMap.get(DcMotor.class, "back_left");
         //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //BACK_RIGHT
         backRight = hardwareMap.get(DcMotor.class, "back_right");
         //backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        turret = hardwareMap.get(DcMotor.class, "turret");
+        roller = hardwareMap.get(DcMotor.class, "roller");
+        roller.setDirection(DcMotorSimple.Direction.REVERSE);
         intake = hardwareMap.get(DcMotor.class, "intake");
+        intake.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
         flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
         blocker = hardwareMap.get(Servo.class, "blocker");
         hood = hardwareMap.get(Servo.class, "hood");
-
-        frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         frontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+
+
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
-        limelight.setPollRateHz(100); // This sets how often we ask Limelight for data (100 times per second)
+        limelight.setPollRateHz(40); // This sets how often we ask Limelight for data (100 times per second)
         limelight.start();
 
         telemetry.addData("RPG", "says hello");
@@ -387,58 +400,73 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         ElapsedTime runTime = new ElapsedTime();
 
-        double targetRPM = 2350; //was 2450
+        double targetRPM = 2500; //was 2450
 
-        while (runTime.seconds() < 0.7) {
+        while (runTime.seconds() < 1.5) {
             flywheel.setTargetRPM(targetRPM);
         }
 
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
         // 1. Flywheel spin up
-        blocker.setPosition(0); // 0 means closed -- cannot fire
+        turret.setPower(0);
+        blocker.setPosition(0.1); // 0 means closed -- cannot fire
         hood.setPosition(0.3);
 
         double t1 = runTime.seconds();
         double dt = 0;
         //1. back up to shooting position
         flywheel.setTargetRPM(targetRPM);
+        //driveForwardInches(20, 0.5);
+        //rotateDegrees(37,0.5);
+        intake.setPower(0.75);
 
-        //flywheel.setTargetRPM(targetRPM);
-        //intake.setPower(0.6);
-        driveForwardInches(-38, 0.75);
-        // rotateDegrees(10, 0.50);
+
+        driveForwardInches(-35, 1);
+        //rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
-        while (dt < 4) {
-            flywheel.setTargetRPM(targetRPM);
+        while (dt < 5) {
+
+            double target = targetRPM;
+            double currentTPS = flywheel1.getVelocity();   // ticks per second
+            double targetTPS = (target / 60.0) * 28.0;  // convert RPM → ticks/sec
+
+            double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+            pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+            double kF = 0.00042;
+            double output = pidOutput + kF * targetTPS;
+            flywheel1.setPower(output);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2) {
-                blocker.setPosition(0.2);
+                blocker.setPosition(0.75);
             }
-            if (dt > 2.1) {
-                intake.setPower(1.0);
+            if (dt > 2.4) {
+                intake.setPower(0.75);
+                roller.setPower(0.75);
             }
         }
 
         blocker.setPosition(0);
-        //flywheel1.setPower(0);
+
         //3. turn 45 degrees left
-        rotateDegrees(35, 0.50);
+        rotateDegrees(37, 1);
 
         // ----------------------------------------------------------------
 
-        //4. intake 1st spike mark
-        driveRightInches(18, 0.75);
-        driveForwardInches(40, 0.6);
+        //4. open the gate
+        driveRightInches(40, 0.5);
+        driveForwardInches(40, 0.5);
+        roller.setPower(0.75);
         sleep(500);
-        driveForwardInches(-40,0.75);
-        rotateDegrees(-45,0.50);
+        driveForwardInches(-20,0.5);
+        rotateDegrees(-50,1);
 
         //5. shoot
-        dt = 0;
+        roller.setPower(0);
+     dt = 0;
         t1 = runTime.seconds();
 
         flywheel.setTargetRPM(targetRPM);
@@ -454,7 +482,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 intake.setPower(1.0);
             }
         }
-        //6. reset shooting system for next move
+    /*     //6. reset shooting system for next move
         blocker.setPosition(0);
 
         // 2nd spike
@@ -491,6 +519,6 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // GET OFF THE LINE!
         blocker.setPosition(0);
         driveRightInches(-6,1);
-
+*/
     }
 }

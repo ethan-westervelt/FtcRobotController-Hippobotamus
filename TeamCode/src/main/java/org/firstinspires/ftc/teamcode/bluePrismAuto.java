@@ -30,7 +30,7 @@ import java.util.List;
 
 @Autonomous
 
-public class ShortBlueDecodeAuto extends LinearOpMode {
+public class bluePrismAuto extends LinearOpMode {
 
     private DcMotor frontLeft;
     private DcMotor frontRight;
@@ -311,6 +311,21 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         }
 
     }
+    double ttx = 0;
+    double calcTurretAlignmentPower(LLResult result) {
+
+        if (result.isValid()) {
+            ttx = 0.7 * result.getTx() + 0.3 * ttx;
+        } else {
+            ttx = 0.9 * ttx;
+        }
+
+        double turretPower = 0;
+        if (Math.abs(ttx) > 0.2) {
+            turretPower = -ttx * 0.025;//output;
+        }
+        return(turretPower);
+    }
 
     // Calculate the COUNTS_PER_INCH for your specific drive train.
 // Go to your motor vendor website to determine your motor's COUNTS_PER_MOTOR_REV
@@ -373,13 +388,14 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         frontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -409,21 +425,16 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
         // 1. Flywheel spin up
-        turret.setPower(0);
+        turret.setTargetPosition(450);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setPower(0.5);
+        //double turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
+        //turret.setPower(turretPower);
         blocker.setPosition(0.1); // 0 means closed -- cannot fire
         hood.setPosition(0.3);
 
         double t1 = runTime.seconds();
         double dt = 0;
-        //1. back up to shooting position
-        flywheel.setTargetRPM(targetRPM);
-        //driveForwardInches(20, 0.5);
-        //rotateDegrees(37,0.5);
-        intake.setPower(0.75);
-
-
-        driveForwardInches(-35, 1);
-        //rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
         while (dt < 5) {
@@ -437,7 +448,6 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
             double kF = 0.00042;
             double output = pidOutput + kF * targetTPS;
             flywheel1.setPower(output);
-            setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
             if (dt > 2) {
@@ -450,19 +460,21 @@ public class ShortBlueDecodeAuto extends LinearOpMode {
         }
 
         blocker.setPosition(0);
-
+        turret.setTargetPosition(0);
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turret.setPower(1);
         //3. turn 45 degrees left
-        rotateDegrees(-37, 1);
+     /*   rotateDegrees(37, 1);
 
         // ----------------------------------------------------------------
 
         //4. open the gate
-        driveRightInches(-40, 0.5);
+        driveRightInches(40, 0.5);
         driveForwardInches(40, 0.5);
         roller.setPower(0.75);
         sleep(500);
         driveForwardInches(-20,0.5);
-        rotateDegrees(50,1);
+        rotateDegrees(-50,1);
 
         //5. shoot
         roller.setPower(0);
