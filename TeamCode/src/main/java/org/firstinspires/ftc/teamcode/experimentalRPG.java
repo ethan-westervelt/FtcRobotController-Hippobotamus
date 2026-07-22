@@ -41,27 +41,6 @@ public class experimentalRPG extends LinearOpMode {
 
     double turretRotate = 0;
 
-    //so like what if we just reused this code for the turret???
-    void setTurretRotatePower(LLResult result, double targetOffset) {
-        turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        if (result.isValid()) {
-            tx = result.getTx();//0.3 * result.getTx() + 0.7 * tx;
-        } else {
-            tx = 0;//0.9 * tx;
-        }
-
-        turretRotate = (tx - targetOffset);
-
-        // Dead band
-        if (turretRotate < 0.01) {
-            turret.setPower(0);
-        } else {
-            turret.setPower(turretRotate);
-        }
-
-    }
-
     void setAlignmentRotatePower(LLResult result, double targetOffset) {
         frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -93,6 +72,7 @@ public class experimentalRPG extends LinearOpMode {
 
 
     double ttx = 0;
+
     double calcTurretAlignmentPower(LLResult result) {
 
         if (result.isValid()) {
@@ -105,7 +85,7 @@ public class experimentalRPG extends LinearOpMode {
         if (Math.abs(ttx) > 0.2) {
             turretPower = -ttx * 0.025;//output;
         }
-        return(turretPower);
+        return (turretPower);
     }
 
     // Declarations for the objects that represent the motors/servos:
@@ -121,7 +101,7 @@ public class experimentalRPG extends LinearOpMode {
     private DcMotor intake;
     private ElapsedTime timer = new ElapsedTime();
     private Limelight3A limelight;
-
+    PIDController turretPID = new PIDController(0.03, 0, 0.0001);
 
     // This is an @Override annotation.
     // Since Hippo is a subclass of LinearOpMode, it 'inherits' the public functions
@@ -240,8 +220,7 @@ public class experimentalRPG extends LinearOpMode {
         double rotate = 0;
         double turretPower = 0;
 
-        PIDController flywheelPID = new PIDController(0.2, 0.0000, 0.0003);
-        //PIDController turretPID = new PIDController(0.007, 0.0000, 0.0001);//needs to be tuned
+        PIDController flywheelPID = new PIDController(0.4, 0.0000, 0.0003);
 
         while (opModeIsActive()) {
 
@@ -262,6 +241,7 @@ public class experimentalRPG extends LinearOpMode {
                 rotate = -0.3;
             } else if (gamepad1.left_bumper) {
                 rotate = 0.3;
+
             } else {
                 rotate = 0;
             }
@@ -274,17 +254,22 @@ public class experimentalRPG extends LinearOpMode {
 
             // Normalize to the maximum power to a wheel
             double maxPower = 1.0;
-            if (Math.abs(fl) > maxPower)
+            if (Math.abs(fl) > maxPower) {
                 maxPower = Math.abs(fl);
-            if (Math.abs(bl) > maxPower)
+            }
+            if (Math.abs(bl) > maxPower) {
                 maxPower = Math.abs(bl);
-            if (Math.abs(fr) > maxPower)
+            }
+            if (Math.abs(fr) > maxPower) {
                 maxPower = Math.abs(fr);
-            if (Math.abs(br) > maxPower)
+            }
+            if (Math.abs(br) > maxPower) {
                 maxPower = Math.abs(br);
+            }
 
-            if (maxPower > 1)
+            if (maxPower > 1) {
                 maxPower = 1;
+            }
 
             fl = fl / maxPower;
             bl = bl / maxPower;
@@ -307,6 +292,8 @@ public class experimentalRPG extends LinearOpMode {
             double currentPos = turret.getCurrentPosition();
             double turretPos = currentPos / turretEncPerDeg;
 
+
+
             turretPower = 0;
 
             //Manual turret control
@@ -323,111 +310,114 @@ public class experimentalRPG extends LinearOpMode {
             if (gamepad2.y) {
 
                 if (result.isValid()) {
+
                     turretPower = calcTurretAlignmentPower(result);
                 }
-            }
 
-            telemetry.addData("turretPower_PRE", turretPower);
-
-            // If you're too far counterclockwise you can only have negative power
-            if (turretPos < -170) {
-                turretPower = Math.min(0,turretPower);
-            }
-            // Likewise, if you're too far clockwise, you can only have positive power
-            if (turretPos > 170) {
-                turretPower =
-                        Math.max(0,turretPower);
-            }
-            turret.setPower(turretPower);
-
-            telemetry.addData("turretPos", turretPos);
-            telemetry.addData("turretPower", turretPower);
-            telemetry.addData("turretTx", ttx);
-            telemetry.addData("rotatePower", turretRotate);
-
-            if (result != null && result.isValid()) {//
-                double tx = result.getTx(); // How far left or right the target is (degrees)
-                double ty = result.getTy(); // How far up or down the target is (degrees)
-                double ta = result.getTa(); // How big the target looks (0%-100% of the image)
-
-                telemetry.addData("Target X", tx);
-                telemetry.addData("Target Y", ty);
-                telemetry.addData("Target Area", ta);
             } else {
-                telemetry.addData("Limelight", "No Targets");
+                turretPID.reset();
             }
+                telemetry.addData("turretPower_PRE", turretPower);
 
-            //intake power
-            if (gamepad2.left_stick_y != 0) {
-                rollerPower = gamepad2.left_stick_y;
-                intakePower = gamepad2.left_stick_y;
-            } else if (gamepad2.right_stick_y != 0) {
-                rollerPower = gamepad2.right_stick_y / 0.75;
-                intakePower = gamepad2.right_stick_y / 0.75;
-            } else {
-                rollerPower = 0;
-                intakePower = 0;
-            }
+                // If you're too far counterclockwise you can only have negative power
+                if (turretPos < -170) {
+                    turretPower = Math.min(0, turretPower);
+                }
+                // Likewise, if you're too far clockwise, you can only have positive power
+                if (turretPos > 170) {
+                    turretPower = Math.max(0, turretPower);
+                }
+                turret.setPower(turretPower);
 
-            intake.setPower(intakePower);
-            roller.setPower(rollerPower);
+                telemetry.addData("turretPos", turret.getCurrentPosition());
+                telemetry.addData("turretPower", turretPower);
+                telemetry.addData("turretTx", ttx);
+                telemetry.addData("rotatePower", turretRotate);
 
-            if (gamepad2.dpad_up) {
+                if (result != null && result.isValid()) {//
+                    double tx = result.getTx(); // How far left or right the target is (degrees)
+                    double ty = result.getTy(); // How far up or down the target is (degrees)
+                    double ta = result.getTa(); // How big the target looks (0%-100% of the image)
+
+                    telemetry.addData("Target X", tx);
+                    telemetry.addData("Target Y", ty);
+                    telemetry.addData("Target Area", ta);
+                } else {
+                    telemetry.addData("Limelight", "No Targets");
+                }
+
+                //intake power
+                if (gamepad2.left_stick_y != 0) {
+                    rollerPower = gamepad2.left_stick_y;
+                    intakePower = gamepad2.left_stick_y;
+                } else if (gamepad2.right_stick_y != 0) {
+                    rollerPower = gamepad2.right_stick_y / 0.75;
+                    intakePower = gamepad2.right_stick_y / 0.75;
+                } else {
+                    rollerPower = 0;
+                    intakePower = 0;
+                }
+
+                intake.setPower(intakePower);
+                roller.setPower(rollerPower);
+
+                if (gamepad2.dpad_up) {
+                    hood.setPosition(0.75);
+                } else if (gamepad2.dpad_down) {
+                    hood.setPosition(0.2);
+                }
+
+
+                // Auto centering.  If you are shooting short and a big far
+                // then adjust the distance multiplier.
+                double ta = result.getTa();
+                double distanceMult = 20.4 / (ta + 18);
+                telemetry.addData("Hood position: ", hood.getPosition());
+                telemetry.addData("distanceMult", distanceMult);
+                telemetry.addData("Target speed", (targetRPM / 60) * 28);
+                telemetry.addData("Actual speed", flywheel1.getVelocity());
+                telemetry.update();
+
+                boolean shootShort = gamepad2.left_bumper;
+                boolean shootLong = gamepad2.right_bumper;
+
+                if (shootShort) {
+                    targetRPM = 2500 * distanceMult;
+                } else if (shootLong) {
+                    targetRPM = 3500;//dont know if we need the distance adapter here
+                } else {
+                    targetRPM = 2500;
+                }
+
+                double target = targetRPM;
+                double currentTPS = flywheel1.getVelocity();   // ticks per second
+                double targetTPS = (target / 60.0) * 28.0;  // convert RPM → ticks/sec
+
+                double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+                pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+                double kF = 0.00042;
+                double output = pidOutput + kF * targetTPS;
+
+                flywheel1.setPower(output);
+
+                telemetry.addData("Target TPS", targetTPS);
+                telemetry.addData("Current TPS", currentTPS);
+                telemetry.addData("PID Output", pidOutput);
+                // telemetry.update();
+
+                if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
+                    gamepad2.rumble(100);
+                }
+
                 hood.setPosition(0.75);
-            } else if (gamepad2.dpad_down) {
-                hood.setPosition(0.2);
-            }
 
+                if (shootShort || shootLong) { //flywheel.isAtSpeed(2350, 200)
+                    blocker.setPosition(0.75);
 
-            // Auto centering.  If you are shooting short and a big far
-            // then adjust the distance multiplier.
-            double ta = result.getTa();
-            double distanceMult = 20.4/(ta +18);
-            telemetry.addData("Hood position: ", hood.getPosition());
-            telemetry.addData("distanceMult", distanceMult);
-            telemetry.addData("Target speed", (targetRPM/60)*28);
-            telemetry.addData("Actual speed", flywheel1.getVelocity());
-            telemetry.update();
+                } else {
+                    blocker.setPosition(0.1);
+                }
 
-            boolean shootShort = gamepad2.left_bumper;
-            boolean shootLong = gamepad2.right_bumper;
-
-            if (shootShort) {
-                 targetRPM = 2500 * distanceMult;
-            } else if (shootLong) {
-                targetRPM = 3500;//dont know if we need the distance adapter here
-            } else {
-                targetRPM = 2500;
-            }
-
-            double target = targetRPM;
-            double currentTPS = flywheel1.getVelocity();   // ticks per second
-            double targetTPS = (target / 60.0) * 28.0;  // convert RPM → ticks/sec
-
-            double pidOutput = flywheelPID.update(targetTPS, currentTPS);
-            pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
-            double kF = 0.00042;
-            double output = pidOutput + kF * targetTPS;
-
-            flywheel1.setPower(output);
-
-            telemetry.addData("Target TPS", targetTPS);
-            telemetry.addData("Current TPS", currentTPS);
-            telemetry.addData("PID Output", pidOutput);
-            // telemetry.update();
-
-            if ((targetRPM > 0) && (Math.abs(currentTPS - targetTPS) < 10)) {
-                gamepad2.rumble(100);
-            }
-
-            hood.setPosition(0.75);
-
-            if (shootShort || shootLong) { //flywheel.isAtSpeed(2350, 200)
-               blocker.setPosition(0.75);
-
-            } else {
-                blocker.setPosition(0.1);
-            }
 
         }
     }

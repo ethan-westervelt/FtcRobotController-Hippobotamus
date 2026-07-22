@@ -345,7 +345,7 @@ public class redPrismAuto extends LinearOpMode {
     static final double     TURN_SPEED              = 0.8;
     static final double     LIFT_SPEED              = 0.2;
     static final double     BACK_SPEED              = 0.5;
-    PIDController flywheelPID = new PIDController(0.2, 0.0000, 0.0003);
+    PIDController flywheelPID = new PIDController(0.4, 0.0000, 0.0003);
     double flywheelSpeed;
     double intakeSpeed = 0.2;
     boolean running = false;
@@ -424,17 +424,29 @@ public class redPrismAuto extends LinearOpMode {
 
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
-        // 1. Flywheel spin up
-        turret.setTargetPosition(-450);
+
+
+        // 1.1 Rotate turret
+        turret.setTargetPosition((int)(80 * -3.62
+        ));
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(0.5);
-        //double turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
-        //turret.setPower(turretPower);
-        blocker.setPosition(0.1); // 0 means closed -- cannot fire
-        hood.setPosition(0.3);
+        sleep(1000);
 
         double t1 = runTime.seconds();
         double dt = 0;
+
+        while (dt<2) {
+            double turretPower = calcTurretAlignmentPower(limelight.getLatestResult());
+            turret.setPower(turretPower);
+            dt = runTime.seconds() - t1;
+        }
+
+        blocker.setPosition(0.1); // 0 means closed -- cannot fire
+        hood.setPosition(0.3);
+
+        t1 = runTime.seconds();
+        dt = 0;
 
         //2. spin up the flywheel
         while (dt < 5) {
@@ -450,10 +462,10 @@ public class redPrismAuto extends LinearOpMode {
             flywheel1.setPower(output);
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 2) {
+            if (dt > 3) {
                 blocker.setPosition(0.75);
             }
-            if (dt > 2.4) {
+            if (dt > 3.4) {
                 intake.setPower(0.75);
                 roller.setPower(0.75);
             }
@@ -463,6 +475,8 @@ public class redPrismAuto extends LinearOpMode {
         turret.setTargetPosition(0);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(1);
+
+        driveForwardInches(-10, 0.75);
         //3. turn 45 degrees left
      /*   rotateDegrees(37, 1);
 

@@ -191,7 +191,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     // Positive degrees means clockwise
     void rotateDegrees(double degrees, double power) {
 
-        double inches = degrees / 4.8;
+        double inches = degrees / 6.0;  // Used to be 4.8
         int ticks = (int)(inches * COUNTS_PER_INCH);
 
         frontLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -326,10 +326,6 @@ public class ShortRedDecodeAuto extends LinearOpMode {
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * 3.1415);
     //Change these values to adjust speeds
-    static final double     DRIVE_SPEED             = 0.8;
-    static final double     TURN_SPEED              = 0.8;
-    static final double     LIFT_SPEED              = 0.2;
-    static final double     BACK_SPEED              = 0.5;
     PIDController flywheelPID = new PIDController(0.2, 0.0000, 0.0003);
     double flywheelSpeed;
     double intakeSpeed = 0.2;
@@ -341,8 +337,6 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // Initialize the drive system variables. you can ignore this. its all good and shouldnt need any changes
         //FRONT_LEFT
         frontLeft = hardwareMap.get(DcMotor.class, "front_left");
-        //frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);// Like this one
-        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         //FRONT_RIGHT
         frontRight = hardwareMap.get(DcMotor.class, "front_right");
@@ -360,6 +354,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
 
         turret = hardwareMap.get(DcMotor.class, "turret");
+
         roller = hardwareMap.get(DcMotor.class, "roller");
         roller.setDirection(DcMotorSimple.Direction.REVERSE);
         intake = hardwareMap.get(DcMotor.class, "intake");
@@ -378,8 +373,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         frontRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         backRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -402,6 +396,11 @@ public class ShortRedDecodeAuto extends LinearOpMode {
 
         double targetRPM = 2500; //was 2450
 
+
+            turret.setTargetPosition(0);
+            turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            turret.setPower(0.75);
+
         while (runTime.seconds() < 1.5) {
             flywheel.setTargetRPM(targetRPM);
         }
@@ -417,12 +416,9 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         double dt = 0;
         //1. back up to shooting position
         flywheel.setTargetRPM(targetRPM);
-        //driveForwardInches(20, 0.5);
-        //rotateDegrees(37,0.5);
         intake.setPower(0.75);
 
-
-        driveForwardInches(-35, 1);
+        driveForwardInches(-35, 0.7);
         //rotateDegrees(10, 0.50);
 
         //2. spin up the flywheel
@@ -452,36 +448,64 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         blocker.setPosition(0);
 
         //3. turn 45 degrees left
-        rotateDegrees(37, 1);
+        rotateDegrees(37, 0.5);
 
         // ----------------------------------------------------------------
 
         //4. open the gate
-        driveRightInches(40, 0.5);
-        driveForwardInches(40, 0.5);
-        roller.setPower(0.75);
+        driveRightInches(36, 0.5);
+        driveForwardInches(44, 0.5);
         sleep(500);
         driveForwardInches(-20,0.5);
-        rotateDegrees(-50,1);
+        rotateDegrees(-70,1);
 
         //5. shoot
         roller.setPower(0);
-     dt = 0;
+        dt = 0;
         t1 = runTime.seconds();
 
-        flywheel.setTargetRPM(targetRPM);
-        while (dt < 5.5) {
-            flywheel.setTargetRPM(targetRPM);
+        while (dt < 2.0) {
+            setAlignmentMotorPower(limelight.getLatestResult());
+            dt = runTime.seconds() - t1;
+        }
+
+        rotateDegrees(37,0.5);
+        driveRightInches(40, 0.5);
+        driveForwardInches(46, 0.3);
+        roller.setPower(0.6);
+        sleep(500);
+        driveForwardInches(-20,0.5);
+        rotateDegrees(-60,1);
+
+        t1 = runTime.seconds();
+        dt = 0;
+
+        while (dt < 5) {
+
+            double target = targetRPM;
+            double currentTPS = flywheel1.getVelocity();   // ticks per second
+            double targetTPS = (target / 60.0) * 28.0;  // convert RPM → ticks/sec
+
+            double pidOutput = flywheelPID.update(targetTPS, currentTPS);
+            pidOutput = Range.clip(pidOutput, -1, 1); //eliminates any powers that are over or under 1 and -1
+            double kF = 0.00042;
+            double output = pidOutput + kF * targetTPS;
+            flywheel1.setPower(output);
             setAlignmentMotorPower(limelight.getLatestResult());
             dt = runTime.seconds() - t1;
             //3. open the gate to shoot
-            if (dt > 3.5) {
-                blocker.setPosition(0.2);
+            if (dt > 2) {
+                blocker.setPosition(0.75);
             }
-            if (dt > 3.6) {
-                intake.setPower(1.0);
+            if (dt > 2.4) {
+                intake.setPower(0.75);
+                roller.setPower(0.75);
             }
         }
+
+        blocker.setPosition(0);
+         driveRightInches(-20,0.5);
+
     /*     //6. reset shooting system for next move
         blocker.setPosition(0);
 
