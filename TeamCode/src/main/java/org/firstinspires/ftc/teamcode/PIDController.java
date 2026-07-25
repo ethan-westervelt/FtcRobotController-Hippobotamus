@@ -1,7 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
 public class PIDController {
-    private double kP, kI, kD;
+    double kP;
+    double kI;
+    private double kD;
     private double integralSum = 0;
     private double lastError = 0;
     private double lastTime = 0;

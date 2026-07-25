@@ -440,8 +440,8 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 blocker.setPosition(0.75);
             }
             if (dt > 2.4) {
-                intake.setPower(0.75);
-                roller.setPower(0.75);
+                intake.setPower(0.6);
+                roller.setPower(0.6);
             }
         }
 
@@ -453,7 +453,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         // ----------------------------------------------------------------
 
         //4. open the gate
-        driveRightInches(36, 0.5);
+        driveRightInches(37, 0.5);
         driveForwardInches(44, 0.5);
         sleep(500);
         driveForwardInches(-20,0.5);
@@ -470,7 +470,7 @@ public class ShortRedDecodeAuto extends LinearOpMode {
         }
 
         rotateDegrees(37,0.5);
-        driveRightInches(40, 0.5);
+        driveRightInches(46, 0.5);
         driveForwardInches(46, 0.3);
         roller.setPower(0.6);
         sleep(500);
@@ -498,8 +498,8 @@ public class ShortRedDecodeAuto extends LinearOpMode {
                 blocker.setPosition(0.75);
             }
             if (dt > 2.4) {
-                intake.setPower(0.75);
-                roller.setPower(0.75);
+                intake.setPower(0.6);
+                roller.setPower(0.6);
             }
         }
 

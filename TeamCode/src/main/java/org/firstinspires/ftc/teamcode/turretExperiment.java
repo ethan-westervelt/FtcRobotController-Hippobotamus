@@ -1,0 +1,473 @@
+//DON'T MESS WITH THIS IT'S MAGIC
+package org.firstinspires.ftc.teamcode;
+
+
+// We need to import external code (code someone else wrote) to make the robot run
+//DON'T CHANGE ANY OF THIS, OR ELSE THINGS WON'T WORK!!!
+
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
+//import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+//import com.qualcomm.robotcore.util.PIDFController;
+//Lines that start with "@" are annotations.
+//This annotation, @TeleOp, tells the compiler to expect a TeleOp op mode.
+//Without it, the driver station won't be able to use the op mode.
+
+@TeleOp
+// "Hippo extends LinearOpMode" means Hippo is a subclass of class LinearOpMode.
+//   This means that subclass Hippo gets all the functionality of class LinearOpMode.
+public class turretExperiment extends LinearOpMode {
+
+    //import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+//import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+//import com.qualcomm.robotcore.hardware.DcMotor;
+    public void stopDrive() {
+        frontLeft.setPower(0);
+        frontRight.setPower(0);
+        backLeft.setPower(0);
+        backRight.setPower(0);
+    }
+
+    double tx = 0;
+
+    double turretRotate = 0;
+
+    void setAlignmentRotatePower(LLResult result, double targetOffset) {
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        if (result.isValid()) {
+            tx = 0.3 * result.getTx() + 0.7 * tx;
+        } else {
+            tx = 0.9 * tx;
+        }
+
+        double rotate = 0.03 * (tx - targetOffset);
+
+        // Dead band
+        if (rotate < 0.01) {
+            frontLeft.setPower(0);
+            frontRight.setPower(0);
+            backLeft.setPower(0);
+            backRight.setPower(0);
+        } else {
+            frontLeft.setPower(rotate);
+            frontRight.setPower(-rotate);
+            backLeft.setPower(rotate);
+            backRight.setPower(-rotate);
+        }
+
+    }
+
+    double ttx = 0;
+
+    double calcTurretAlignmentPower(LLResult result, double tx_offset) {
+
+        if (result.isValid()) {
+            ttx = 0.7 * result.getTx() + 0.3 * ttx;
+        } else {
+            ttx = 0.9 * ttx;
+        }
+
+        double turretPower = 0;
+        if (Math.abs(ttx + tx_offset) > 0.2) {
+            turretPower = turretPID.update(tx_offset,ttx); //-(ttx + tx_offset) * 0.025;//output; 0.005
+        }
+        return (turretPower);
+    }
+
+    // Declarations for the objects that represent the motors/servos:
+    private DcMotor frontLeft;
+    private DcMotor frontRight;
+    private DcMotor backLeft;
+    private DcMotor backRight;
+    private DcMotor turret;
+    private DcMotor roller;
+    private DcMotorEx flywheel1;
+    private Servo blocker;
+    private Servo hood;
+    private DcMotor intake;
+    private ElapsedTime timer = new ElapsedTime();
+    private Limelight3A limelight;
+    PIDController turretPID = new PIDController(0.02, 0.0005, 0.0);
+
+    // This is an @Override annotation.
+    // Since Hippo is a subclass of LinearOpMode, it 'inherits' the public functions
+    //   of LinearOpMode, one of which is 'runOpMode'. By default, this is essentially
+    //   an empty function that does nothing. Thus, to add in our own code, we need to
+    //   "Override" the existing empty function, replacing it with the code that follows.
+    // It's worth noting that Override annotations are not technically necessary, but
+    //   they can sometimes help the compiler catch errors in the code.
+    @Override
+
+    // Here is the most important function of the program, runOpMode. The code in here
+    // begins executing as soon as you hit the INIT button
+    public void runOpMode() {
+
+        // The following lines of code link the objects we declared above to the
+        //   entries in the config file on the robot. The config file links those entries
+        //   to the actual electrical wiring that runs the motors.
+        // Essentially, this code links software (code) to hardware (motors, servos, etc.)
+        // There are also lines that set behaviors for the motors, such as REVERSE or BRAKE.
+        // Most lines that set behaviors say something like "set behavior" and the behavior in all caps.
+
+        //  FRONT_LEFT
+        frontLeft = hardwareMap.get(DcMotor.class, "front_left");
+        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //FRONT_RIGHT
+        frontRight = hardwareMap.get(DcMotor.class, "front_right");
+
+        //BACK_LEFT
+        backLeft = hardwareMap.get(DcMotor.class, "back_left");
+        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        //BACK_RIGHT
+        backRight = hardwareMap.get(DcMotor.class, "back_right");
+
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        //FLYWHEEL1
+        flywheel1 = hardwareMap.get(DcMotorEx.class, "flywheel1");
+        flywheel1.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        PIDFCoefficients pidfNew = new PIDFCoefficients(300, 1, 0.0, 0.0); // default = 10;3;0;0
+        flywheel1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
+
+        //INTAKE
+        intake = hardwareMap.get(DcMotor.class, "intake");
+
+        //BLOCKER
+        blocker = hardwareMap.get(Servo.class, "blocker");
+
+        //HOOD
+        hood = hardwareMap.get(Servo.class, "hood");
+
+        // TURRET
+        turret = hardwareMap.get(DcMotor.class, "turret");
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        roller = hardwareMap.get(DcMotor.class, "roller");
+
+        // You need this many ticks of the motor to get one degree of turret rotation
+        double turretEncPerDeg = -3.78;
+
+        //LIMELIGHT
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.pipelineSwitch(0);
+        limelight.setPollRateHz(50);
+        limelight.start();
+
+        // These lines create 2 instances of the PID controller class.
+        // A PID controller has three parts: a P term, an I term, and a D term(surprisingly enough).
+        // The P term stands for proportional, and effects how quickly the motor responds to changes in output.
+        // A high P value will cause your controller to very quickly and strongly respond to any change.
+        // Too high of a value can lead to oscillation and surges of power.
+        // A low P value means that your controller will take a very long time to reach its target and will recover slowly.
+        // The D term is derivative, and helps dampens small changes.
+
+        flywheel1.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        flywheel1.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+
+        // telemetry.addData shoves the data we give it into a buffer
+        // telemetry.update takes the contents of that buffer and outputs it on
+        // the driver station. Then it deletes the buffer.
+        // This can be useful for checking power levels of motors, or the positioning
+        // of servos, but doesn't really 'do anything'.
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.addData("Version", "2026 CRI_RPG_1");
+        telemetry.addData("Ethan", "says hello");
+        telemetry.addData("Tyler", "also says hi");
+        telemetry.addData("Asher", "loves Mr DuBois");
+        telemetry.addData("And", "vice versa");
+        telemetry.addData("We're going", "to Chicago!");
+        telemetry.update();
+
+        // Pretty self-explanatory. The program pauses execution on the following line,
+        // waiting for the play button to be pressed.
+        waitForStart();
+
+        double intakePower;
+        double rollerPower;
+        double targetRPM;  // Good for about 48"
+
+        //double kP = 0.06; //tuned down to try to fix drift
+        //double kI = 0.0;
+        //double kD = 0.002;
+
+        //double integral = 0;
+        //double lastError = 0;
+        //double lastTime = timer.seconds();
+
+        //FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.016, 0.0, 0.0001, 0.00042);
+
+        double fl = 0;
+        double fr = 0;
+        double br = 0;
+        double bl = 0;
+        double rotate = 0;
+        double turretPower = 0;
+
+        boolean firstYPress = true;
+
+        //PIDController flywheelPID = new PIDController(0.4, 0.0000, 0.0003);
+        //flywheel1.setVelocityPIDFCoefficients();
+
+        double flywheelFactor = 1.00;
+
+        while (opModeIsActive()) {
+
+            // -------------------------------
+            // ----------GAMEPAD 1 ------------
+            // -------------------------------
+
+            if (gamepad1.dpad_left) {
+                limelight.pipelineSwitch(1);
+                telemetry.addData("pipeline # = ", 1);
+            } else if (gamepad1.dpad_right) {
+                limelight.pipelineSwitch(0);
+                telemetry.addData("pipeline # = ", 0);
+            }
+
+/*
+            if (gamepad2.dpad_left) {
+                turretPID.kP += 0.001;
+                sleep(250);
+            } else if (gamepad2.dpad_right) {
+                turretPID.kP -= 0.001;
+                sleep(250);
+            } else if (gamepad2.dpad_up) {
+                turretPID.kI += 0.00001;
+                sleep(250);
+            } else if (gamepad2.dpad_down) {
+                turretPID.kI -= 0.00001;
+                sleep(250);
+            }
+*/
+            // Forward (y) and strafe (x)
+            double x = -gamepad1.right_stick_x;
+            double y = gamepad1.right_stick_y;
+
+            // Trigger is fast spin, bumpers are slow spin
+            if (gamepad1.right_trigger > 0) {
+                rotate = -1;
+            } else if (gamepad1.left_trigger > 0) {
+                rotate = 1;
+            } else if (gamepad1.right_bumper) {
+                rotate = -0.3;
+            } else if (gamepad1.left_bumper) {
+                rotate = 0.3;
+
+            } else {
+                rotate = 0;
+            }
+
+            // Power to the wheels are the sum of X, Y, and rotate
+            fl = y + x + rotate;
+            bl = y - x + rotate;
+            fr = y - x - rotate;
+            br = y + x - rotate;
+
+            // Normalize to the maximum power to a wheel
+            double maxPower = 1.0;
+            if (Math.abs(fl) > maxPower) {
+                maxPower = Math.abs(fl);
+            }
+            if (Math.abs(bl) > maxPower) {
+                maxPower = Math.abs(bl);
+            }
+            if (Math.abs(fr) > maxPower) {
+                maxPower = Math.abs(fr);
+            }
+            if (Math.abs(br) > maxPower) {
+                maxPower = Math.abs(br);
+            }
+
+            if (maxPower < 1) {
+                maxPower = 1;
+            }
+
+            fl = fl / maxPower;
+            telemetry.addData("maxx power", maxPower);
+            telemetry.addData("front left power", fl);
+            bl = bl / maxPower;
+            fr = fr / maxPower;
+            br = br / maxPower;
+
+            frontLeft.setPower(fl);
+            frontRight.setPower(fr);
+            backLeft.setPower(bl);
+            backRight.setPower(br);
+
+            // -------------------------------
+            // ----------GAMEPAD 2------------
+            // -------------------------------
+
+            // turret power!
+            // Either use manual bumpers or the left trigger for auto align.
+            // Positive power means counterclockwise.
+            LLResult result = limelight.getLatestResult();
+            double currentPos = turret.getCurrentPosition();
+            double turretPos = currentPos / turretEncPerDeg;
+
+            turretPower = 0;
+
+            //Manual turret control
+            if (gamepad2.left_trigger > 0.1) {
+                turretPower = 0.6 * gamepad2.left_trigger;
+            }
+            if (gamepad2.right_trigger > 0.1) {
+                turretPower = -0.6 * gamepad2.right_trigger;
+            }
+
+            // Turret auto centering
+            // If you're holding down the button, try to use auto recentering.
+            // If you don't find it then it falls back to what you're doing manually.
+            if (gamepad2.y) {
+                if (result.isValid()) {
+                    // tx_offset of 2.0 aims a little to the right.
+                    turretPower = calcTurretAlignmentPower(result, 2.0);
+                    if (firstYPress) {
+                        turretPID.reset();
+                        firstYPress = false;
+                    }
+                }
+                if (tx < 2.0) {
+                    gamepad2.rumble(500);
+                }
+            } else {
+                firstYPress = true;
+            }
+            telemetry.addData("turretPower_PRE", turretPower);
+
+
+            currentPos = turret.getCurrentPosition();
+            turretPos = currentPos / turretEncPerDeg;
+
+            // If you're too far counterclockwise you can only have negative power
+            if (turretPos < -100) {
+                turretPower = Math.min(0, turretPower);
+            }
+            // Likewise, if you're too far clockwise, you can only have positive power
+            if (turretPos > 100) {
+                turretPower = Math.max(0, turretPower);
+            }
+            turret.setPower(turretPower);
+
+            telemetry.addData("kP", turretPID.kP);
+            telemetry.addData("kI", turretPID.kI);
+            telemetry.addData("turretPos", turret.getCurrentPosition());
+            telemetry.addData("turretPower", turretPower);
+            telemetry.addData("turretTx", ttx);
+            telemetry.addData("rotatePower", turretRotate);
+
+            if (result != null && result.isValid()) {//
+                double tx = result.getTx(); // How far left or right the target is (degrees)
+                double ty = result.getTy(); // How far up or down the target is (degrees)
+                double ta = result.getTa(); // How big the target looks (0%-100% of the image)
+
+                telemetry.addData("Target X", tx);
+                telemetry.addData("Target Y", ty);
+                telemetry.addData("Target Area", ta);
+            } else {
+                telemetry.addData("Limelight", "No Targets");
+            }
+
+            //intake power
+            if (gamepad2.right_stick_y != 0) {
+                rollerPower = gamepad2.right_stick_y;
+                intakePower = gamepad2.right_stick_y;
+            } else if (gamepad2.left_stick_y != 0) {
+                rollerPower = gamepad2.left_stick_y / 0.6;
+                intakePower = gamepad2.left_stick_y / 0.6;
+            } else {
+                rollerPower = 0;
+                intakePower = 0;
+            }
+
+            intake.setPower(intakePower);
+            roller.setPower(rollerPower);
+
+            if (gamepad2.dpad_up) {
+                hood.setPosition(0.75);
+            } else if (gamepad2.dpad_down) {
+                hood.setPosition(0.2);
+            }
+
+            boolean shootShort = gamepad2.left_bumper;
+            boolean shootLong = gamepad2.right_bumper;
+
+
+
+            if (gamepad1.dpad_down) {
+                flywheelFactor -=  0.01;
+                sleep(250);
+            } else if (gamepad1.dpad_up) {
+                flywheelFactor +=  0.01;
+                sleep(250);
+            }
+
+            telemetry.addData("flywheel factor", flywheelFactor);
+
+            // Distance adjustment
+            if ((shootShort || shootLong) && result.isValid()) {
+                double ta = result.getTa();
+                ta = Math.max(ta,0.3);
+                targetRPM = (99.2 + 39.6 / Math.sqrt(ta)) ;
+            } else if (shootShort && !result.isValid()) {
+                targetRPM = 125;
+            } else if (shootLong  && !result.isValid()) {
+                targetRPM = 140;
+            } else {
+                targetRPM = 125;
+            }
+
+            targetRPM *= flywheelFactor;
+
+            double targetrps = 2.0*3.141592*(targetRPM/60);
+            flywheel1.setVelocity(targetrps, AngleUnit.RADIANS);
+
+            telemetry.addData("Hood position: ", hood.getPosition());
+            telemetry.addData("Target speed", (targetRPM / 60) * 28);
+            telemetry.addData("Actual speed", flywheel1.getVelocity());
+            telemetry.addData("targetRPM", targetRPM);
+            telemetry.update();
+
+
+
+            hood.setPosition(0.75);
+
+            if (shootShort) { //flywheel.isAtSpeed(2350, 200)
+                blocker.setPosition(0.75);
+            } else if (shootLong) {
+                hood.setPosition(0.2);
+                blocker.setPosition(0.75);
+            } else {
+                blocker.setPosition(0.1);
+            }
+        }
+    }
+}

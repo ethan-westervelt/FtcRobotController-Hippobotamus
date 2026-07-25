@@ -19,8 +19,6 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-//import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-//import com.qualcomm.robotcore.util.PIDFController;
 //Lines that start with "@" are annotations.
 //This annotation, @TeleOp, tells the compiler to expect a TeleOp op mode.
 //Without it, the driver station won't be able to use the op mode.
@@ -202,13 +200,13 @@ public class experimentalRPG extends LinearOpMode {
         telemetry.addData("We're going", "to Chicago!");
         telemetry.update();
 
-        // Pretty self explanatory. The program pauses execution on the following line,
+        // Pretty self-explanatory. The program pauses execution on the following line,
         // waiting for the play button to be pressed.
         waitForStart();
 
         double intakePower;
         double rollerPower;
-        double targetRPM = 128;  // Good for about 48"
+        double targetRPM;  // Good for about 48"
 
         //double kP = 0.06; //tuned down to try to fix drift
         //double kI = 0.0;
@@ -230,11 +228,21 @@ public class experimentalRPG extends LinearOpMode {
         //PIDController flywheelPID = new PIDController(0.4, 0.0000, 0.0003);
         //flywheel1.setVelocityPIDFCoefficients();
 
+        double flywheelFactor = 1.00;
+
         while (opModeIsActive()) {
 
             // -------------------------------
             // ----------GAMEPAD 1 ------------
             // -------------------------------
+
+            if (gamepad1.dpad_left) {
+                limelight.pipelineSwitch(1);
+                telemetry.addData("pipeline # = ", 1);
+            } else if (gamepad1.dpad_right) {
+                limelight.pipelineSwitch(0);
+                telemetry.addData("pipeline # = ", 0);
+            }
 
             // Forward (y) and strafe (x)
             double x = -gamepad1.right_stick_x;
@@ -318,6 +326,9 @@ public class experimentalRPG extends LinearOpMode {
                     // tx_offset of 2.0 aims a little to the right.
                     turretPower = calcTurretAlignmentPower(result, 2.0);
                 }
+                if (tx < 2.0) {
+                    gamepad2.rumble(500);
+                }
             }
             telemetry.addData("turretPower_PRE", turretPower);
 
@@ -373,12 +384,35 @@ public class experimentalRPG extends LinearOpMode {
                 hood.setPosition(0.2);
             }
 
+            boolean shootShort = gamepad2.left_bumper;
+            boolean shootLong = gamepad2.right_bumper;
+
+
+
+            if (gamepad1.dpad_down) {
+                flywheelFactor -=  0.01;
+                sleep(250);
+            } else if (gamepad1.dpad_up) {
+                flywheelFactor +=  0.01;
+                sleep(250);
+            }
+
+            telemetry.addData("flywheel factor", flywheelFactor);
+
             // Distance adjustment
-            if (result.isValid()) {
+            if ((shootShort || shootLong) && result.isValid()) {
                 double ta = result.getTa();
                 ta = Math.max(ta,0.3);
-                targetRPM = 99.2 + 39.6 / Math.sqrt(ta);
+                targetRPM = (99.2 + 39.6 / Math.sqrt(ta)) ;
+            } else if (shootShort && !result.isValid()) {
+                targetRPM = 125;
+            } else if (shootLong  && !result.isValid()) {
+                targetRPM = 140;
+            } else {
+                targetRPM = 125;
             }
+
+            targetRPM *= flywheelFactor;
 
             double targetrps = 2.0*3.141592*(targetRPM/60);
             flywheel1.setVelocity(targetrps, AngleUnit.RADIANS);
@@ -389,8 +423,7 @@ public class experimentalRPG extends LinearOpMode {
             telemetry.addData("targetRPM", targetRPM);
             telemetry.update();
 
-            boolean shootShort = gamepad2.left_bumper;
-            boolean shootLong = gamepad2.right_bumper;
+
 
             hood.setPosition(0.75);
 
@@ -400,10 +433,8 @@ public class experimentalRPG extends LinearOpMode {
                 hood.setPosition(0.2);
                 blocker.setPosition(0.75);
             } else {
-                blocker.setPosition(0);
+                blocker.setPosition(0.1);
             }
-
-
         }
     }
 }
