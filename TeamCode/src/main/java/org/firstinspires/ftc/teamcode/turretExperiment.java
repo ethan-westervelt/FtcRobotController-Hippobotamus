@@ -241,7 +241,7 @@ public class turretExperiment extends LinearOpMode {
         while (opModeIsActive()) {
 
             // -------------------------------
-            // ----------GAMEPAD 1 ------------
+            // ----------GAMEPAD 1------------
             // -------------------------------
 
             if (gamepad1.dpad_left) {
@@ -250,6 +250,14 @@ public class turretExperiment extends LinearOpMode {
             } else if (gamepad1.dpad_right) {
                 limelight.pipelineSwitch(0);
                 telemetry.addData("pipeline # = ", 0);
+            }
+
+            if (gamepad1.dpad_down) {
+                flywheelFactor -=  0.01;
+                sleep(250);
+            } else if (gamepad1.dpad_up) {
+                flywheelFactor +=  0.01;
+                sleep(250);
             }
 
 /*
@@ -363,7 +371,6 @@ public class turretExperiment extends LinearOpMode {
             }
             telemetry.addData("turretPower_PRE", turretPower);
 
-
             currentPos = turret.getCurrentPosition();
             turretPos = currentPos / turretEncPerDeg;
 
@@ -420,8 +427,6 @@ public class turretExperiment extends LinearOpMode {
             boolean shootShort = gamepad2.left_bumper;
             boolean shootLong = gamepad2.right_bumper;
 
-
-
             if (gamepad1.dpad_down) {
                 flywheelFactor -=  0.01;
                 sleep(250);
@@ -440,7 +445,7 @@ public class turretExperiment extends LinearOpMode {
             } else if (shootShort && !result.isValid()) {
                 targetRPM = 125;
             } else if (shootLong  && !result.isValid()) {
-                targetRPM = 140;
+                targetRPM = 180;
             } else {
                 targetRPM = 125;
             }

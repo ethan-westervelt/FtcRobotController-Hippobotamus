@@ -424,10 +424,8 @@ public class bluePrismAuto extends LinearOpMode {
 
         //double targetTPS = (targetRPM / 60.0) * 28.0;  // convert RPM → ticks/sec
 
-
-
         // 1.1 Rotate turret
-        turret.setTargetPosition((int)(-80 * -3.62));
+        turret.setTargetPosition((int)(100 * -3.62));
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(-0.5);
         sleep(1000);
@@ -442,7 +440,7 @@ public class bluePrismAuto extends LinearOpMode {
         }
 
         blocker.setPosition(0.1); // 0 means closed -- cannot fire
-        hood.setPosition(0.3);
+        //hood.setPosition(0.3);
 
         t1 = runTime.seconds();
         dt = 0;
@@ -475,7 +473,7 @@ public class bluePrismAuto extends LinearOpMode {
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(1);
 
-        driveForwardInches(-10, 0.75);
+        driveForwardInches(10, 0.75);
         //3. turn 45 degrees left
      /*   rotateDegrees(37, 1);
 

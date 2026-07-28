@@ -411,12 +411,12 @@ public class redPrismAuto extends LinearOpMode {
         telemetry.addData("RPG", "says hello");
         telemetry.update();
 
-        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.015, 0.0, 0.0001, 0.00042);
+        FlywheelShoot flywheel = new FlywheelShoot(flywheel1, 0.4, 0.0, 0.0001, 0.00042);
         waitForStart();
 
         ElapsedTime runTime = new ElapsedTime();
 
-        double targetRPM = 2500; //was 2450
+        double targetRPM = 2600; //was 2450
 
         while (runTime.seconds() < 1.5) {
             flywheel.setTargetRPM(targetRPM);
@@ -427,8 +427,7 @@ public class redPrismAuto extends LinearOpMode {
 
 
         // 1.1 Rotate turret
-        turret.setTargetPosition((int)(80 * -3.62
-        ));
+        turret.setTargetPosition((int)(-100 * -3.62));
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(0.5);
         sleep(1000);
@@ -443,7 +442,7 @@ public class redPrismAuto extends LinearOpMode {
         }
 
         blocker.setPosition(0.1); // 0 means closed -- cannot fire
-        hood.setPosition(0.3);
+
 
         t1 = runTime.seconds();
         dt = 0;
@@ -476,7 +475,7 @@ public class redPrismAuto extends LinearOpMode {
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setPower(1);
 
-        driveForwardInches(-10, 0.75);
+        driveForwardInches(10, 0.75);
         //3. turn 45 degrees left
      /*   rotateDegrees(37, 1);
 
