@@ -11,3 +11,6 @@ dependencyResolutionManagement {
 
 include ':FtcRobotController'
 include ':TeamCode'
+include ':Quickstart'
+project(':Quickstart').projectDir = new File('../Quickstart')
+
